@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>STG48 Controller</title>
+    <style>
+      :root {
+        color-scheme: dark light;
+        font-family: "Segoe UI", "Hiragino Sans", sans-serif;
+        background: #101418;
+        color: #f2f5f8;
+      }
+
+      body {
+        margin: 0;
+        padding: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      main {
+        width: min(480px, 90vw);
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+        padding: 32px 24px 120px;
+        box-sizing: border-box;
+        position: relative;
+      }
+
+      .status {
+        text-align: center;
+        font-size: 1rem;
+        opacity: 0.9;
+        position: fixed;
+        bottom: 32px;
+        left: 0;
+        width: 100%;
+        pointer-events: none;
+        display: flex;
+        justify-content: center;
+        gap: 6px;
+      }
+      .status span {
+        pointer-events: auto;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .status-lamp {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #666;
+      }
+
+      .controller {
+        display: grid;
+        gap: 24px;
+        grid-template-columns: repeat(2, 1fr);
+        align-items: center;
+      }
+
+      .stick-area {
+        width: 100%;
+        aspect-ratio: 1 / 1;
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.06);
+        position: relative;
+        touch-action: none;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .stick-thumb {
+        position: absolute;
+        width: 96px;
+        height: 96px;
+        max-width: 35%;
+        max-height: 35%;
+        border-radius: 50%;
+        background: rgba(88, 156, 255, 0.85);
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+        pointer-events: none;
+        transform: translate(-50%, -50%);
+        left: 50%;
+        top: 50%;
+        transition: transform 80ms ease-out;
+      }
+
+      .buttons {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        gap: 24px;
+        width: 100%;
+      }
+
+      button {
+        font-size: 1.1rem;
+        padding: 14px 0;
+        border-radius: 999px;
+        border: none;
+        background: rgba(255, 255, 255, 0.08);
+        color: inherit;
+        touch-action: manipulation;
+        transition: transform 80ms ease, background 120ms ease;
+      }
+
+      button:active,
+      button.active {
+        transform: scale(0.95);
+        background: rgba(255, 255, 255, 0.2);
+      }
+
+      .info-button {
+        position: fixed;
+        top: 12px;
+        right: 12px;
+        padding: 10px 18px;
+        font-size: 0.9rem;
+        background: rgba(255, 255, 255, 0.12);
+        border-radius: 999px;
+        z-index: 10;
+      }
+
+      .info-button:active {
+        transform: scale(0.97);
+      }
+
+      .primary-action {
+        width: 100%;
+        max-width: 280px;
+        aspect-ratio: 1 / 1;
+        border-radius: 50%;
+        padding: 0;
+        font-size: 1.2rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .id-emphasis {
+        font-weight: 600;
+        font-size: 1.1rem;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <button type="button" class="info-button" id="info-button">操作説明</button>
+      <section class="controller">
+        <div class="stick-area" id="stick">
+          <div class="stick-thumb" id="stick-thumb"></div>
+        </div>
+        <div class="buttons">
+          <button type="button" class="primary-action" data-btn="a">攻撃</button>
+        </div>
+      </section>
+      <p class="status">
+        <span data-id></span>
+        ／ <span data-status>未接続</span>
+        <span class="status-lamp" data-lamp></span>
+      </p>
+    </main>
+    <script>
+      const statusEl = document.querySelector('[data-status]');
+      const lampEl = document.querySelector('[data-lamp]');
+      const idEl = document.querySelector('[data-id]');
+      const params = new URLSearchParams(location.search);
+      const rawId = (params.get('id') || 'p1').toLowerCase();
+
+      function toFullWidth(str) {
+        return str.replace(/[0-9a-z]/gi, (char) => {
+          const code = char.charCodeAt(0);
+          if (code >= 0x30 && code <= 0x39) {
+            return String.fromCharCode(0xff10 + (code - 0x30));
+          }
+          if (code >= 0x41 && code <= 0x5a) {
+            return String.fromCharCode(0xff21 + (code - 0x41));
+          }
+          if (code >= 0x61 && code <= 0x7a) {
+            return String.fromCharCode(0xff41 + (code - 0x61));
+          }
+          return char;
+        });
+      }
+
+      function formatDisplayId(id) {
+        if (id.startsWith('p')) {
+          const suffix = id.slice(1);
+          return suffix ? `プレイヤー${toFullWidth(suffix)}` : 'プレイヤー';
+        }
+        return toFullWidth(id);
+      }
+
+      const controllerId = rawId;
+      idEl.textContent = formatDisplayId(rawId);
+
+      const infoText = `同一ネットワークから ?id=p1 ～ ?id=p4 を指定して参加できます。\nスティックはドラッグ、ボタンはタップで入力されます。`;
+      const infoButton = document.getElementById('info-button');
+      infoButton.addEventListener('click', () => {
+        alert(infoText);
+      });
+
+      let ws = null;
+      let backoff = 800;
+      let lastSent = '';
+
+      const axes = { x: 0, y: 0 };
+      const btn = { a: false };
+
+      function connectionURL() {
+        const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+        return `${proto}://${location.host}/ws`;
+      }
+
+      function updateStatus(text) {
+        statusEl.textContent = text;
+        const normalized = text.trim();
+        let color = '#666';
+        if (/接続済み/.test(normalized)) {
+          color = '#4caf50';
+        } else if (/再試行中/.test(normalized) || /接続中/.test(normalized)) {
+          color = '#f1c40f';
+        } else if (/未接続/.test(normalized)) {
+          color = '#e74c3c';
+        }
+        lampEl.style.background = color;
+      }
+
+      function sendState(force = false) {
+        if (!ws || ws.readyState !== WebSocket.OPEN) {
+          return;
+        }
+        const payload = {
+          type: 'state',
+          id: controllerId,
+          axes: { ...axes },
+          btn: { ...btn },
+          t: Date.now(),
+        };
+        const serialized = JSON.stringify(payload);
+        if (!force && serialized === lastSent) {
+          return;
+        }
+        lastSent = serialized;
+        ws.send(serialized);
+      }
+
+      function scheduleReconnect() {
+        const wait = backoff;
+        backoff = Math.min(Math.round(backoff * 1.5), 3000);
+        setTimeout(connect, wait);
+      }
+
+      function connect() {
+        if (ws) {
+          try {
+            ws.close();
+          } catch (_) {}
+        }
+        updateStatus('接続中…');
+        ws = new WebSocket(connectionURL());
+        ws.onopen = () => {
+          backoff = 800;
+          updateStatus('接続済み');
+          ws.send(JSON.stringify({ role: 'controller', id: controllerId }));
+          sendState(true);
+        };
+        ws.onclose = () => {
+          updateStatus('未接続（再試行中）');
+          scheduleReconnect();
+        };
+        ws.onerror = () => {
+          ws.close();
+        };
+      }
+
+      connect();
+      setInterval(() => sendState(true), 2500);
+
+      const stick = document.getElementById('stick');
+      const thumb = document.getElementById('stick-thumb');
+      let activePointer = null;
+
+      function clamp(v) {
+        return Math.max(-1, Math.min(1, v));
+      }
+
+      function updateStick(event) {
+        const rect = stick.getBoundingClientRect();
+        const relX = (event.clientX - rect.left) / rect.width;
+        const relY = (event.clientY - rect.top) / rect.height;
+        const x = clamp(relX * 2 - 1);
+        const y = clamp(relY * 2 - 1);
+        axes.x = parseFloat(x.toFixed(3));
+        axes.y = parseFloat((-y).toFixed(3));
+        thumb.style.left = `${(x + 1) * 50}%`;
+        thumb.style.top = `${(y + 1) * 50}%`;
+        sendState();
+      }
+
+      function resetStick() {
+        activePointer = null;
+        axes.x = 0;
+        axes.y = 0;
+        thumb.style.left = '50%';
+        thumb.style.top = '50%';
+        sendState();
+      }
+
+      stick.addEventListener('pointerdown', (event) => {
+        stick.setPointerCapture(event.pointerId);
+        activePointer = event.pointerId;
+        updateStick(event);
+      });
+
+      stick.addEventListener('pointermove', (event) => {
+        if (activePointer !== event.pointerId) return;
+        updateStick(event);
+      });
+
+      const resetEvents = ['pointerup', 'pointercancel', 'pointerleave'];
+      resetEvents.forEach((type) => {
+        stick.addEventListener(type, (event) => {
+          if (activePointer !== null && activePointer === event.pointerId) {
+            if (stick.hasPointerCapture(event.pointerId)) {
+              stick.releasePointerCapture(event.pointerId);
+            }
+            resetStick();
+          }
+        });
+      });
+
+      document.querySelectorAll('[data-btn]').forEach((button) => {
+        const key = button.dataset.btn;
+        button.addEventListener('pointerdown', (event) => {
+          event.preventDefault();
+          button.setPointerCapture(event.pointerId);
+          btn[key] = true;
+          button.classList.add('active');
+          sendState();
+        });
+
+        const release = (event) => {
+          if (button.hasPointerCapture(event.pointerId)) {
+            button.releasePointerCapture(event.pointerId);
+          }
+          if (!btn[key]) return;
+          btn[key] = false;
+          button.classList.remove('active');
+          sendState();
+        };
+
+        button.addEventListener('pointerup', release);
+        button.addEventListener('pointercancel', release);
+        button.addEventListener('pointerleave', release);
+      });
+    </script>
+  </body>
+</html>
