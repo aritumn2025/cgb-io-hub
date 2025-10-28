@@ -7,6 +7,7 @@
 - [ ] テスト端末として Game 用 PC と Controller 用スマホ/ブラウザを同一 LAN に接続する
 - [ ] 必要に応じて `ADDR` / `ORIGINS` / `MAX_CLIENTS` / `RATE_HZ` を設定し、
       想定する運用値に合わせる
+- [ ] CLI でテストするために [vi/websocat](https://github.com/vi/websocat) を用いた
 
 ## HTTP / 基本動作
 
@@ -50,58 +51,71 @@
   {"time":"2025-10-29T03:36:13.368083782+09:00","level":"INFO","msg":"http_request","method":"GET","path":"/","status":200,"duration_ms":0,"remote_ip":"::1"}
   ```
 
+## `vi/websocat` を使う注意事項
+
+- https://github.com/vi/websocat
+- 対話型のツールであるため、次を実行して接続する
+  ```
+  websocat -vvE ws://localhost:8765/ws
+  ```
+  - `-v` でログの詳細を表示できる
+  - `-vv` で更に詳しいログになり、これを使うと close code と reason text が見れる
+  - `-E` で close message を受け取ると終了できる ( `--exit-on-eof` )
+- 以降の例で、実行例から接続（例: `websocat -vE ws://localhost:8765/ws`）は省略している
+- 以降の例で、サーバ側のログ例から disconnected などは省略している
+
 ## WebSocket 登録シーケンス
 
 - [ ] Game クライアントが `/ws` に接続し、最初の Text フレームで `{"role":"game"}`
       を送ると 101 Switching Protocols が確立し、ログに `role=game` の接続情報が出力される
-  ```bash
-  wscat -c ws://localhost:8765/ws
-  connected (press CTRL+C to quit)
-  > {"role":"game"}
+  ```json
+  { "role": "game" }
+  ```
+  ```
+  {"time":"2025-10-29T04:41:33.389013157+09:00","level":"INFO","msg":"connected","component":"hub","role":"game","id":"","remote_ip":"::1"}
   ```
 - [ ] Controller クライアントが `/ws` に接続し、
       `{"role":"controller","id":"p1"}` など許可された ID で登録できる
-  ```bash
-  wscat -c ws://localhost:8765/ws
-  connected (press CTRL+C to quit)
-  > {"role":"controller","id":"p1"}
+  ```json
+  { "role": "controller", "id": "p1" }
+  ```
+  ```
+  {"time":"2025-10-29T04:47:15.892273947+09:00","level":"INFO","msg":"connected","component":"hub","role":"controller","id":"p1","remote_ip":"::1"}
   ```
 - [ ] Controller 登録で ID を省略または正規表現 `^[a-z0-9_-]{1,32}$`
-      に一致しない値を送ると、Hub が 1008 Policy Violation で切断しログに
-      `register_invalid_id` が出力される
-  ```bash
-  wscat -c ws://localhost:8765/ws
-  connected (press CTRL+C to quit)
-  > {"role":"controller","id":"大文字"}
-  < disconnected (code: 1008, reason: invalid controller id)
+      に一致しない値を送ると、ログに `register_invalid_id` が出力される
+  - またこの時 Hub が 1008 Policy Violation で切断を送信する
+  ```json
+  { "role": "controller", "id": "ほげ" }
   ```
-- [ ] 接続後 5 秒以内に登録メッセージを送らない場合、Hub がタイムアウトして切断する
-- [ ] 登録メッセージをバイナリフレームで送ると 1003 Unsupported Data で切断される
-  ```bash
-  wscat -c ws://localhost:8765/ws --binary
-  binary data (enter base64): 0102
-  < disconnected (code: 1003, reason: text frame required)
+  ```
+  {"time":"2025-10-29T06:14:39.721379148+09:00","level":"WARN","msg":"register_invalid_id","component":"hub","role":"controller","id":"ほげ","remote_ip":"::1"}
   ```
 
 ## Controller 中継動作
 
 - [ ] Controller が送信する JSON の `id` が自身の登録 ID と一致する場合、
       Game 側で同一 payload を受信できる（内容が改変されない）
+  ```json
+  { "role": "controller", "id": "p2" }
+  { "type": "state", "id": "p2" }
+  ```
 - [ ] `id` フィールドに異なる値を入れて送信すると、Hub が 1008 Policy Violation
       で切断しログに `payload_invalid`・`id mismatch` が出力される
-  ```bash
-  # Controller 登録済みセッションから送信
-  > {"type":"state","id":"p2"}
-  < disconnected (code: 1008, reason: id mismatch)
+  ```json
+  { "role": "controller", "id": "p1" }
+  { "type": "state", "id": "p2" }
   ```
 - [ ] Game 未接続時に Controller が送信しても Hub
       はエラーを返さず受信し続ける（Game 側には届かない）
 - [ ] Controller が Text 以外のフレーム（Binary/Ping/Pong 以外）を送ると
-      1003 Unsupported Data で切断される
+      1003 Unsupported Data で切断される （要検証）
   ```bash
-  wscat -c ws://localhost:8765/ws --binary
-  binary data (enter base64): 0102
-  < disconnected (code: 1003, reason: text frame required)
+  # これだと `text frame required` で切断される
+  printf '\x01\x02' | websocat -b - ws://localhost:8765/ws
+  ```
+  ```
+  {"time":"2025-10-29T06:20:10.123456789+09:00","level":"WARN","msg":"register_invalid_type","component":"hub","role":"","id":"","remote_ip":"::1"}
   ```
 
 ## Game セッション管理
@@ -133,8 +147,10 @@
 - [ ] `--origins` フラグまたは `ORIGINS` 環境変数に特定の Origin を設定すると、
       許可リスト外 Origin からの WebSocket アップグレードが拒否される
   ```bash
-  wscat -c ws://localhost:8765/ws -H "Origin: https://forbidden.example"
-  < error: Unexpected server response: 403
+  websocat -H 'Origin: https://forbidden.example' ws://localhost:8765/ws
+  ```
+  ```
+  {"time":"2025-10-29T06:25:42.987654321+09:00","level":"INFO","msg":"http_request","method":"GET","path":"/ws","status":403,"duration_ms":1,"remote_ip":"::1"}
   ```
 - [ ] `--max-clients`（`MAX_CLIENTS`）で Controller 接続上限を変更できる
 - [ ] `--rate-hz`（`RATE_HZ`）を変更すると `RelayQueueSize = rateHz * 2` が反映され、
