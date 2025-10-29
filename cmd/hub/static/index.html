@@ -42,6 +42,7 @@
         pointer-events: none;
         display: flex;
         justify-content: center;
+        align-items: center;
         gap: 6px;
       }
       .status span {
@@ -55,6 +56,7 @@
         height: 10px;
         border-radius: 50%;
         background: #666;
+        display: inline-block;
       }
 
       .controller {
@@ -116,19 +118,109 @@
         background: rgba(255, 255, 255, 0.2);
       }
 
-      .info-button {
+      .info-menu {
         position: fixed;
         top: 12px;
         right: 12px;
-        padding: 10px 18px;
-        font-size: 0.9rem;
-        background: rgba(255, 255, 255, 0.12);
-        border-radius: 999px;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 12px;
+        pointer-events: none;
         z-index: 10;
       }
 
-      .info-button:active {
-        transform: scale(0.97);
+      .info-toggle {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        border: none;
+        background: rgba(255, 255, 255, 0.12);
+        color: inherit;
+        display: inline-flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        pointer-events: auto;
+        cursor: pointer;
+        transition: transform 80ms ease, background 120ms ease;
+      }
+
+      .info-toggle span {
+        width: 20px;
+        height: 2px;
+        border-radius: 999px;
+        background: currentColor;
+        transition: transform 160ms ease, opacity 160ms ease;
+      }
+
+      .info-toggle:active {
+        transform: scale(0.95);
+      }
+
+      .info-menu.open .info-toggle {
+        background: rgba(255, 255, 255, 0.2);
+      }
+
+      .info-menu.open .info-toggle span:nth-child(1) {
+        transform: translateY(8px) rotate(45deg);
+      }
+
+      .info-menu.open .info-toggle span:nth-child(2) {
+        opacity: 0;
+      }
+
+      .info-menu.open .info-toggle span:nth-child(3) {
+        transform: translateY(-8px) rotate(-45deg);
+      }
+
+      .info-panel {
+        min-width: 240px;
+        max-width: clamp(240px, 60vw, 320px);
+        padding: 18px 20px;
+        border-radius: 14px;
+        background: rgba(8, 12, 16, 0.92);
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        box-shadow: 0 18px 36px rgba(0, 0, 0, 0.4);
+        font-size: 0.9rem;
+        line-height: 1.6;
+        color: inherit;
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        transform: translateY(-8px);
+        transition: opacity 160ms ease, transform 160ms ease,
+          visibility 160ms ease;
+      }
+
+      .info-menu.open .info-panel {
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+        transform: translateY(0);
+      }
+
+      .info-panel-title {
+        margin: 0 0 8px;
+        font-size: 1rem;
+        font-weight: 600;
+      }
+
+      .info-panel p {
+        margin: 0;
+      }
+
+      .info-panel p + p {
+        margin-top: 10px;
+      }
+
+      .info-panel code {
+        font-family: inherit;
+        font-size: 0.86em;
+        background: rgba(255, 255, 255, 0.14);
+        padding: 0 6px;
+        border-radius: 6px;
       }
 
       .primary-action {
@@ -151,13 +243,37 @@
   </head>
   <body>
     <main>
-      <button type="button" class="info-button" id="info-button">操作説明</button>
+      <div class="info-menu" id="info-menu">
+        <button
+          type="button"
+          class="info-toggle"
+          id="info-toggle"
+          aria-expanded="false"
+          aria-controls="info-panel"
+          aria-label="操作説明"
+        >
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+        <div
+          class="info-panel"
+          id="info-panel"
+          role="dialog"
+          aria-labelledby="info-panel-title"
+        >
+          <p class="info-panel-title" id="info-panel-title">操作説明</p>
+          <p>画面左のスティックはドラッグ、右のボタンはタップで入力</p>
+        </div>
+      </div>
       <section class="controller">
         <div class="stick-area" id="stick">
           <div class="stick-thumb" id="stick-thumb"></div>
         </div>
         <div class="buttons">
-          <button type="button" class="primary-action" data-btn="a">攻撃</button>
+          <button type="button" class="primary-action" data-btn="a">
+            攻撃
+          </button>
         </div>
       </section>
       <p class="status">
@@ -167,11 +283,13 @@
       </p>
     </main>
     <script>
-      const statusEl = document.querySelector('[data-status]');
-      const lampEl = document.querySelector('[data-lamp]');
-      const idEl = document.querySelector('[data-id]');
+      const statusEl = document.querySelector("[data-status]");
+      const lampEl = document.querySelector("[data-lamp]");
+      const idEl = document.querySelector("[data-id]");
+      const infoMenu = document.getElementById("info-menu");
+      const infoToggle = document.getElementById("info-toggle");
       const params = new URLSearchParams(location.search);
-      const rawId = (params.get('id') || 'p1').toLowerCase();
+      const rawId = (params.get("id") || "p1").toLowerCase();
 
       function toFullWidth(str) {
         return str.replace(/[0-9a-z]/gi, (char) => {
@@ -190,9 +308,9 @@
       }
 
       function formatDisplayId(id) {
-        if (id.startsWith('p')) {
+        if (id.startsWith("p")) {
           const suffix = id.slice(1);
-          return suffix ? `プレイヤー${toFullWidth(suffix)}` : 'プレイヤー';
+          return suffix ? `プレイヤー${toFullWidth(suffix)}` : "プレイヤー";
         }
         return toFullWidth(id);
       }
@@ -200,34 +318,58 @@
       const controllerId = rawId;
       idEl.textContent = formatDisplayId(rawId);
 
-      const infoText = `同一ネットワークから ?id=p1 ～ ?id=p4 を指定して参加できます。\nスティックはドラッグ、ボタンはタップで入力されます。`;
-      const infoButton = document.getElementById('info-button');
-      infoButton.addEventListener('click', () => {
-        alert(infoText);
+      function closeInfoMenu() {
+        if (!infoMenu.classList.contains("open")) {
+          return;
+        }
+        infoMenu.classList.remove("open");
+        infoToggle.setAttribute("aria-expanded", "false");
+      }
+
+      infoToggle.addEventListener("click", (event) => {
+        event.stopPropagation();
+        const isOpen = infoMenu.classList.toggle("open");
+        infoToggle.setAttribute("aria-expanded", String(isOpen));
+      });
+
+      document.addEventListener("click", (event) => {
+        if (!infoMenu.contains(event.target)) {
+          closeInfoMenu();
+        }
+      });
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          const wasOpen = infoMenu.classList.contains("open");
+          closeInfoMenu();
+          if (wasOpen) {
+            infoToggle.focus();
+          }
+        }
       });
 
       let ws = null;
       let backoff = 800;
-      let lastSent = '';
+      let lastSent = "";
 
       const axes = { x: 0, y: 0 };
       const btn = { a: false };
 
       function connectionURL() {
-        const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+        const proto = location.protocol === "https:" ? "wss" : "ws";
         return `${proto}://${location.host}/ws`;
       }
 
       function updateStatus(text) {
         statusEl.textContent = text;
         const normalized = text.trim();
-        let color = '#666';
+        let color = "#666";
         if (/接続済み/.test(normalized)) {
-          color = '#4caf50';
+          color = "#4caf50";
         } else if (/再試行中/.test(normalized) || /接続中/.test(normalized)) {
-          color = '#f1c40f';
+          color = "#f1c40f";
         } else if (/未接続/.test(normalized)) {
-          color = '#e74c3c';
+          color = "#e74c3c";
         }
         lampEl.style.background = color;
       }
@@ -237,7 +379,7 @@
           return;
         }
         const payload = {
-          type: 'state',
+          type: "state",
           id: controllerId,
           axes: { ...axes },
           btn: { ...btn },
@@ -263,16 +405,16 @@
             ws.close();
           } catch (_) {}
         }
-        updateStatus('接続中…');
+        updateStatus("接続中…");
         ws = new WebSocket(connectionURL());
         ws.onopen = () => {
           backoff = 800;
-          updateStatus('接続済み');
-          ws.send(JSON.stringify({ role: 'controller', id: controllerId }));
+          updateStatus("接続済み");
+          ws.send(JSON.stringify({ role: "controller", id: controllerId }));
           sendState(true);
         };
         ws.onclose = () => {
-          updateStatus('未接続（再試行中）');
+          updateStatus("未接続（再試行中）");
           scheduleReconnect();
         };
         ws.onerror = () => {
@@ -283,8 +425,8 @@
       connect();
       setInterval(() => sendState(true), 2500);
 
-      const stick = document.getElementById('stick');
-      const thumb = document.getElementById('stick-thumb');
+      const stick = document.getElementById("stick");
+      const thumb = document.getElementById("stick-thumb");
       let activePointer = null;
 
       function clamp(v) {
@@ -308,23 +450,23 @@
         activePointer = null;
         axes.x = 0;
         axes.y = 0;
-        thumb.style.left = '50%';
-        thumb.style.top = '50%';
+        thumb.style.left = "50%";
+        thumb.style.top = "50%";
         sendState();
       }
 
-      stick.addEventListener('pointerdown', (event) => {
+      stick.addEventListener("pointerdown", (event) => {
         stick.setPointerCapture(event.pointerId);
         activePointer = event.pointerId;
         updateStick(event);
       });
 
-      stick.addEventListener('pointermove', (event) => {
+      stick.addEventListener("pointermove", (event) => {
         if (activePointer !== event.pointerId) return;
         updateStick(event);
       });
 
-      const resetEvents = ['pointerup', 'pointercancel', 'pointerleave'];
+      const resetEvents = ["pointerup", "pointercancel", "pointerleave"];
       resetEvents.forEach((type) => {
         stick.addEventListener(type, (event) => {
           if (activePointer !== null && activePointer === event.pointerId) {
@@ -336,13 +478,13 @@
         });
       });
 
-      document.querySelectorAll('[data-btn]').forEach((button) => {
+      document.querySelectorAll("[data-btn]").forEach((button) => {
         const key = button.dataset.btn;
-        button.addEventListener('pointerdown', (event) => {
+        button.addEventListener("pointerdown", (event) => {
           event.preventDefault();
           button.setPointerCapture(event.pointerId);
           btn[key] = true;
-          button.classList.add('active');
+          button.classList.add("active");
           sendState();
         });
 
@@ -352,13 +494,13 @@
           }
           if (!btn[key]) return;
           btn[key] = false;
-          button.classList.remove('active');
+          button.classList.remove("active");
           sendState();
         };
 
-        button.addEventListener('pointerup', release);
-        button.addEventListener('pointercancel', release);
-        button.addEventListener('pointerleave', release);
+        button.addEventListener("pointerup", release);
+        button.addEventListener("pointercancel", release);
+        button.addEventListener("pointerleave", release);
       });
     </script>
   </body>
