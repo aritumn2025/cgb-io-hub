@@ -304,9 +304,10 @@ button.active {
 
 .theme-toggle {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  justify-content: center;
+  gap: 14px;
   padding-top: 16px;
   margin-top: 16px;
   border-top: 1px solid var(--color-border);
@@ -316,18 +317,42 @@ button.active {
   margin: 0;
   font-size: 0.95rem;
   font-weight: 600;
+  text-align: center;
 }
 
 .theme-toggle__button {
-  padding: 10px 16px;
+  padding: 12px 20px;
   border-radius: 999px;
   font-size: 0.95rem;
   pointer-events: auto;
   background: var(--color-button-bg);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  line-height: 1;
 }
 
 .theme-toggle__button:active {
   background: var(--color-button-active-bg);
+}
+
+.theme-toggle__button[aria-pressed="true"] {
+  background: var(--color-button-active-bg);
+}
+
+.theme-toggle__button:focus-visible {
+  outline: 2px solid rgba(88, 156, 255, 0.65);
+  outline-offset: 3px;
+}
+
+.theme-toggle__icon {
+  font-size: 1.15rem;
+  display: inline-flex;
+}
+
+.theme-toggle__text {
+  font-weight: 600;
 }
 
 .primary-action {

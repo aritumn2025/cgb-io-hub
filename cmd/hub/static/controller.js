@@ -393,10 +393,19 @@ function applyTheme(theme, toggleButton) {
     return;
   }
 
-  const label = normalized === "light" ? "ダークモードに切り替え" : "ライトモードに切り替え";
-  toggleButton.textContent = label;
-  toggleButton.setAttribute("aria-label", label);
+  const targetTheme = normalized === "light" ? "dark" : "light";
+  const icon = toggleButton.querySelector("[data-theme-icon]");
+  const text = toggleButton.querySelector("[data-theme-text]");
+  if (icon) {
+    icon.textContent = targetTheme === "light" ? "☀" : "☾";
+  }
+  if (text) {
+    text.textContent = targetTheme === "light" ? "ライトモード" : "ダークモード";
+  }
+  toggleButton.setAttribute("aria-label", `${targetTheme === "light" ? "ライトモード" : "ダークモード"}で表示`);
+  toggleButton.setAttribute("title", `${targetTheme === "light" ? "ライトモード" : "ダークモード"}に切り替え`);
   toggleButton.setAttribute("aria-pressed", normalized === "light" ? "true" : "false");
+  toggleButton.dataset.targetTheme = targetTheme;
 }
 
 function readStoredTheme() {
