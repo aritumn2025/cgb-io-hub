@@ -16,8 +16,13 @@
   --color-dpad-bg: rgba(88, 156, 255, 0.18);
   --color-dpad-active-bg: rgba(88, 156, 255, 0.32);
   --color-dpad-border: rgba(88, 156, 255, 0.4);
-  --control-size: clamp(150px, 36vw, 220px);
+  --control-size: clamp(220px, 32vw, 300px);
   --control-gap: clamp(16px, 4vw, 24px);
+  --info-panel-bg: linear-gradient(160deg, rgba(34, 44, 62, 0.92), rgba(12, 16, 24, 0.94));
+  --info-panel-border: var(--color-border);
+  --info-panel-shadow: 0 24px 48px rgba(0, 0, 0, 0.45);
+  --info-panel-section-bg: rgba(18, 24, 36, 0.68);
+  --info-panel-section-border: rgba(138, 162, 220, 0.22);
 }
 
 body {
@@ -52,6 +57,11 @@ body.theme-light {
   --color-dpad-bg: rgba(48, 90, 190, 0.16);
   --color-dpad-active-bg: rgba(48, 90, 190, 0.28);
   --color-dpad-border: rgba(48, 90, 190, 0.3);
+  --info-panel-bg: linear-gradient(160deg, rgba(255, 255, 255, 0.97), rgba(238, 244, 255, 0.98));
+  --info-panel-border: var(--color-border);
+  --info-panel-shadow: 0 22px 44px rgba(24, 34, 72, 0.16);
+  --info-panel-section-bg: rgba(255, 255, 255, 0.86);
+  --info-panel-section-border: rgba(78, 102, 160, 0.12);
 }
 
 #controller-screen.is-hidden {
@@ -59,32 +69,34 @@ body.theme-light {
 }
 
 main {
-  width: min(480px, 90vw);
+  width: min(640px, 90vw);
   display: flex;
   flex-direction: column;
   gap: 24px;
-  padding: 32px 24px 120px;
+  padding: 32px 24px 72px;
   box-sizing: border-box;
   position: relative;
 }
 
 .status {
   text-align: center;
-  font-size: 1rem;
+  font-size: 0.95rem;
   opacity: 0.9;
-  position: fixed;
-  bottom: 32px;
-  left: 0;
-  width: 100%;
-  pointer-events: none;
   display: flex;
   justify-content: center;
   align-items: center;
   gap: 6px;
+  flex-wrap: wrap;
+  margin: 0;
+}
+
+.info-panel .status {
+  width: auto;
+  align-self: center;
+  margin-top: 0;
 }
 
 .status span {
-  pointer-events: auto;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -120,6 +132,10 @@ main {
 }
 
 @media (max-width: 560px) {
+  :root {
+    --control-size: clamp(200px, calc(100vw - 48px), 300px);
+  }
+
   .controller {
     grid-template-columns: 1fr;
   }
@@ -352,21 +368,25 @@ button.active {
 }
 
 .info-panel {
-  min-width: 240px;
-  max-width: clamp(240px, 60vw, 320px);
-  padding: 18px 20px;
-  border-radius: 14px;
-  background: var(--color-elevated-bg);
-  border: 1px solid var(--color-border);
-  box-shadow: 0 18px 36px var(--color-elevated-shadow);
-  font-size: 0.9rem;
-  line-height: 1.6;
+  min-width: 300px;
+  max-width: clamp(340px, 70vw, 460px);
+  padding: 30px 32px;
+  border-radius: 20px;
+  background: var(--info-panel-bg);
+  border: 1px solid var(--info-panel-border);
+  box-shadow: var(--info-panel-shadow);
+  backdrop-filter: blur(20px);
+  font-size: 0.95rem;
+  line-height: 1.65;
   color: inherit;
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  transform: translateY(-8px);
-  transition: opacity 160ms ease, transform 160ms ease, visibility 160ms ease;
+  transform: translateY(-10px);
+  transition: opacity 180ms ease, transform 200ms ease, visibility 160ms ease;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
 }
 
 .info-menu.open .info-panel {
@@ -377,17 +397,18 @@ button.active {
 }
 
 .info-panel-title {
-  margin: 0 0 8px;
-  font-size: 1rem;
-  font-weight: 600;
+  margin: 0 0 10px;
+  font-size: 1.25rem;
+  font-weight: 650;
 }
 
-.info-panel p {
+.info-panel p:not(.status) {
   margin: 0;
+  opacity: 0.88;
 }
 
-.info-panel p + p {
-  margin-top: 10px;
+.info-panel p + p:not(.status) {
+  margin-top: 12px;
 }
 
 .info-panel code {
@@ -403,17 +424,16 @@ button.active {
   flex-direction: column;
   align-items: stretch;
   justify-content: center;
-  gap: 12px;
-  padding-top: 16px;
-  margin-top: 16px;
-  border-top: 1px solid var(--color-border);
+  gap: 16px;
+  padding: 0;
+  margin: 0;
 }
 
 .control-toggle__label {
   margin: 0;
   font-size: 0.95rem;
   font-weight: 600;
-  text-align: center;
+  text-align: left;
 }
 
 .control-toggle__button {
@@ -447,17 +467,16 @@ button.active {
   flex-direction: column;
   align-items: stretch;
   justify-content: center;
-  gap: 14px;
-  padding-top: 16px;
-  margin-top: 16px;
-  border-top: 1px solid var(--color-border);
+  gap: 16px;
+  padding: 0;
+  margin: 0;
 }
 
 .theme-toggle__label {
   margin: 0;
   font-size: 0.95rem;
   font-weight: 600;
-  text-align: center;
+  text-align: left;
 }
 
 .theme-toggle__button {

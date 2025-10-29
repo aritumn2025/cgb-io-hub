@@ -48,7 +48,6 @@
           <p class="info-panel-title" id="info-panel-title">操作説明</p>
           <p>スティックはドラッグ、十字キーはタップで入力されます。</p>
           <div class="control-toggle" id="control-toggle">
-            <p class="control-toggle__label">入力モード</p>
             <button
               type="button"
               class="control-toggle__button"
@@ -77,6 +76,11 @@
               >
             </button>
           </div>
+          <p class="status" role="status">
+            <span data-id></span>
+            ／ <span data-status>未接続</span>
+            <span class="status-lamp" data-lamp></span>
+          </p>
         </div>
       </div>
       <section class="controller" data-mode="stick">
@@ -123,11 +127,6 @@
           </button>
         </div>
       </section>
-      <p class="status">
-        <span data-id></span>
-        ／ <span data-status>未接続</span>
-        <span class="status-lamp" data-lamp></span>
-      </p>
     </main>
     <section
       class="player-picker is-hidden"
