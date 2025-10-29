@@ -575,7 +575,7 @@ function readStoredInputMode() {
   } catch (_) {
     // ignore storage access issues
   }
-  return INPUT_MODES.STICK;
+  return INPUT_MODES.DPAD;
 }
 
 function persistInputMode(mode) {
@@ -587,11 +587,14 @@ function persistInputMode(mode) {
 }
 
 function normalizeInputMode(mode) {
-  return mode === INPUT_MODES.DPAD ? INPUT_MODES.DPAD : INPUT_MODES.STICK;
+  return mode === INPUT_MODES.STICK ? INPUT_MODES.STICK : INPUT_MODES.DPAD;
 }
 
 function initTheme(toggleButton) {
-  let currentTheme = readStoredTheme() || detectSystemTheme();
+  let currentTheme = readStoredTheme();
+  if (!currentTheme) {
+    currentTheme = "light";
+  }
   currentTheme = normalizeTheme(currentTheme);
   applyTheme(currentTheme, toggleButton);
 
@@ -653,13 +656,6 @@ function persistThemePreference(theme) {
   } catch (_) {
     // ignore storage write issues
   }
-}
-
-function detectSystemTheme() {
-  if (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches) {
-    return "light";
-  }
-  return "dark";
 }
 
 function normalizeTheme(theme) {

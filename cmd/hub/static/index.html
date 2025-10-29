@@ -24,7 +24,7 @@
       href="favicons/apple-touch-icon.png"
     />
   </head>
-  <body>
+  <body class="theme-light">
     <main id="controller-screen">
       <div class="info-menu" id="info-menu">
         <button
@@ -52,10 +52,10 @@
               type="button"
               class="control-toggle__button"
               data-control-toggle
-              aria-pressed="false"
-              aria-label="十字キー操作に切り替え"
+              aria-pressed="true"
+              aria-label="スティック操作に切り替え"
             >
-              十字キーに切り替え
+              スティックに切り替え
             </button>
           </div>
           <div class="theme-toggle" id="theme-toggle">
@@ -63,7 +63,7 @@
               type="button"
               class="theme-toggle__button"
               data-theme-toggle
-              aria-pressed="false"
+              aria-pressed="true"
             >
               <span
                 class="theme-toggle__icon"
@@ -83,11 +83,11 @@
           </p>
         </div>
       </div>
-      <section class="controller" data-mode="stick">
-        <div class="stick-area" id="stick" aria-hidden="false">
+      <section class="controller" data-mode="dpad">
+        <div class="stick-area" id="stick" aria-hidden="true">
           <div class="stick-thumb" id="stick-thumb"></div>
         </div>
-        <div class="dpad-area" id="dpad" aria-hidden="true">
+        <div class="dpad-area" id="dpad" aria-hidden="false">
           <button
             type="button"
             class="dpad-button dpad-button--up"

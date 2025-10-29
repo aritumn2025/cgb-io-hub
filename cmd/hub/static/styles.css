@@ -21,8 +21,6 @@
   --info-panel-bg: linear-gradient(160deg, rgba(34, 44, 62, 0.92), rgba(12, 16, 24, 0.94));
   --info-panel-border: var(--color-border);
   --info-panel-shadow: 0 24px 48px rgba(0, 0, 0, 0.45);
-  --info-panel-section-bg: rgba(18, 24, 36, 0.68);
-  --info-panel-section-border: rgba(138, 162, 220, 0.22);
 }
 
 body {
@@ -60,8 +58,6 @@ body.theme-light {
   --info-panel-bg: linear-gradient(160deg, rgba(255, 255, 255, 0.97), rgba(238, 244, 255, 0.98));
   --info-panel-border: var(--color-border);
   --info-panel-shadow: 0 22px 44px rgba(24, 34, 72, 0.16);
-  --info-panel-section-bg: rgba(255, 255, 255, 0.86);
-  --info-panel-section-border: rgba(78, 102, 160, 0.12);
 }
 
 #controller-screen.is-hidden {
