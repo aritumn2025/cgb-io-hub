@@ -1,0 +1,236 @@
+:root {
+  color-scheme: dark light;
+  font-family: "Segoe UI", "Hiragino Sans", sans-serif;
+  background: #101418;
+  color: #f2f5f8;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+main {
+  width: min(480px, 90vw);
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 32px 24px 120px;
+  box-sizing: border-box;
+  position: relative;
+}
+
+.status {
+  text-align: center;
+  font-size: 1rem;
+  opacity: 0.9;
+  position: fixed;
+  bottom: 32px;
+  left: 0;
+  width: 100%;
+  pointer-events: none;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+}
+
+.status span {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status-lamp {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #666;
+  display: inline-block;
+}
+
+.controller {
+  display: grid;
+  gap: 24px;
+  grid-template-columns: repeat(2, 1fr);
+  align-items: center;
+}
+
+.stick-area {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.06);
+  position: relative;
+  touch-action: none;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.stick-thumb {
+  position: absolute;
+  width: 96px;
+  height: 96px;
+  max-width: 35%;
+  max-height: 35%;
+  border-radius: 50%;
+  background: rgba(88, 156, 255, 0.85);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  left: 50%;
+  top: 50%;
+  transition: transform 80ms ease-out;
+}
+
+.buttons {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 24px;
+  width: 100%;
+}
+
+button {
+  font-size: 1.1rem;
+  padding: 14px 0;
+  border-radius: 999px;
+  border: none;
+  background: rgba(255, 255, 255, 0.08);
+  color: inherit;
+  touch-action: manipulation;
+  transition: transform 80ms ease, background 120ms ease;
+}
+
+button:active,
+button.active {
+  transform: scale(0.95);
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.info-menu {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.info-toggle {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  border: none;
+  background: rgba(255, 255, 255, 0.12);
+  color: inherit;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  pointer-events: auto;
+  cursor: pointer;
+  transition: transform 80ms ease, background 120ms ease;
+}
+
+.info-toggle span {
+  width: 20px;
+  height: 2px;
+  border-radius: 999px;
+  background: currentColor;
+  transition: transform 160ms ease, opacity 160ms ease;
+}
+
+.info-toggle:active {
+  transform: scale(0.95);
+}
+
+.info-menu.open .info-toggle {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.info-menu.open .info-toggle span:nth-child(1) {
+  transform: translateY(8px) rotate(45deg);
+}
+
+.info-menu.open .info-toggle span:nth-child(2) {
+  opacity: 0;
+}
+
+.info-menu.open .info-toggle span:nth-child(3) {
+  transform: translateY(-8px) rotate(-45deg);
+}
+
+.info-panel {
+  min-width: 240px;
+  max-width: clamp(240px, 60vw, 320px);
+  padding: 18px 20px;
+  border-radius: 14px;
+  background: rgba(8, 12, 16, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.4);
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: inherit;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(-8px);
+  transition: opacity 160ms ease, transform 160ms ease, visibility 160ms ease;
+}
+
+.info-menu.open .info-panel {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.info-panel-title {
+  margin: 0 0 8px;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.info-panel p {
+  margin: 0;
+}
+
+.info-panel p + p {
+  margin-top: 10px;
+}
+
+.info-panel code {
+  font-family: inherit;
+  font-size: 0.86em;
+  background: rgba(255, 255, 255, 0.14);
+  padding: 0 6px;
+  border-radius: 6px;
+}
+
+.primary-action {
+  width: 100%;
+  max-width: 280px;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  padding: 0;
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.id-emphasis {
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
