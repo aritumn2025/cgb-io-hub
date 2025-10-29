@@ -1,4 +1,9 @@
 const THEME_STORAGE_KEY = "stg48:theme";
+const INPUT_MODE_STORAGE_KEY = "stg48:input-mode";
+const INPUT_MODES = {
+  STICK: "stick",
+  DPAD: "dpad",
+};
 
 document.addEventListener("DOMContentLoaded", () => {
   const statusEl = document.querySelector("[data-status]");
@@ -6,12 +11,15 @@ document.addEventListener("DOMContentLoaded", () => {
   const idEl = document.querySelector("[data-id]");
   const infoMenu = document.getElementById("info-menu");
   const infoToggle = document.getElementById("info-toggle");
+  const controller = document.querySelector(".controller");
   const stick = document.getElementById("stick");
   const thumb = document.getElementById("stick-thumb");
+  const dpad = document.getElementById("dpad");
   const actionButtons = document.querySelectorAll("[data-btn]");
   const controllerScreen = document.getElementById("controller-screen");
   const playerPicker = document.getElementById("player-picker");
   const themeToggle = document.querySelector("[data-theme-toggle]");
+  const controlToggle = document.querySelector("[data-control-toggle]");
 
   initTheme(themeToggle);
 
@@ -25,7 +33,17 @@ document.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
-  if (!statusEl || !lampEl || !idEl || !infoMenu || !infoToggle || !stick || !thumb) {
+  if (!
+    statusEl ||
+    !lampEl ||
+    !idEl ||
+    !infoMenu ||
+    !infoToggle ||
+    !controller ||
+    !stick ||
+    !thumb ||
+    !dpad
+  ) {
     return;
   }
 
@@ -40,8 +58,17 @@ document.addEventListener("DOMContentLoaded", () => {
   connection.onOpen(() => state.send(true));
   connection.connect();
 
-  initStick(stick, thumb, state);
+  const stickControls = initStick(stick, thumb, state);
+  const dpadControls = initDpad(dpad, state);
   initButtons(actionButtons, state);
+  initControlMode({
+    toggleButton: controlToggle,
+    controller,
+    stickElement: stick,
+    dpadElement: dpad,
+    stickControls,
+    dpadControls,
+  });
 
   window.setInterval(() => state.send(true), 2500);
 });
@@ -199,6 +226,10 @@ function createInputState(controllerId, connection) {
 }
 
 function initStick(stick, thumb, state) {
+  if (!stick || !thumb) {
+    return { reset() {} };
+  }
+
   let activePointer = null;
 
   const updateThumb = (x, y) => {
@@ -206,7 +237,14 @@ function initStick(stick, thumb, state) {
     thumb.style.top = `${(y + 1) * 50}%`;
   };
 
+  const releasePointer = () => {
+    if (activePointer !== null && stick.hasPointerCapture(activePointer)) {
+      stick.releasePointerCapture(activePointer);
+    }
+  };
+
   const resetStick = () => {
+    releasePointer();
     activePointer = null;
     state.axes.x = 0;
     state.axes.y = 0;
@@ -244,12 +282,108 @@ function initStick(stick, thumb, state) {
       if (activePointer === null || activePointer !== event.pointerId) {
         return;
       }
-      if (stick.hasPointerCapture(event.pointerId)) {
-        stick.releasePointerCapture(event.pointerId);
-      }
       resetStick();
     });
   });
+
+  return { reset: resetStick };
+}
+
+function initDpad(dpad, state) {
+  if (!dpad) {
+    return { reset() {} };
+  }
+
+  const buttons = Array.from(dpad.querySelectorAll("[data-dpad]"));
+  const pointerDirections = new Map();
+  const pointerTargets = new Map();
+  const activeDirections = new Set();
+
+  const updateAxes = () => {
+    let x = 0;
+    let y = 0;
+    if (activeDirections.has("left")) {
+      x -= 1;
+    }
+    if (activeDirections.has("right")) {
+      x += 1;
+    }
+    if (activeDirections.has("up")) {
+      y += 1;
+    }
+    if (activeDirections.has("down")) {
+      y -= 1;
+    }
+    state.axes.x = clamp(x);
+    state.axes.y = clamp(y);
+    state.send();
+  };
+
+  const activate = (direction) => {
+    if (!direction) {
+      return;
+    }
+    activeDirections.add(direction);
+    updateAxes();
+  };
+
+  const release = (direction) => {
+    if (!direction) {
+      return;
+    }
+    activeDirections.delete(direction);
+    updateAxes();
+  };
+
+  buttons.forEach((button) => {
+    const direction = button.dataset.dpad;
+    if (!direction) {
+      return;
+    }
+
+    button.addEventListener("pointerdown", (event) => {
+      event.preventDefault();
+      button.setPointerCapture(event.pointerId);
+      pointerDirections.set(event.pointerId, direction);
+      pointerTargets.set(event.pointerId, button);
+      button.classList.add("active");
+      activate(direction);
+    });
+
+    const releaseHandler = (event) => {
+      const storedDirection = pointerDirections.get(event.pointerId);
+      if (storedDirection) {
+        pointerDirections.delete(event.pointerId);
+        pointerTargets.delete(event.pointerId);
+        button.classList.remove("active");
+        release(storedDirection);
+      }
+      if (button.hasPointerCapture(event.pointerId)) {
+        button.releasePointerCapture(event.pointerId);
+      }
+    };
+
+    ["pointerup", "pointercancel", "pointerleave"].forEach((type) => {
+      button.addEventListener(type, releaseHandler);
+    });
+  });
+
+  const reset = () => {
+    pointerTargets.forEach((target, pointerId) => {
+      if (target && target.hasPointerCapture(pointerId)) {
+        target.releasePointerCapture(pointerId);
+      }
+    });
+    pointerTargets.clear();
+    pointerDirections.clear();
+    activeDirections.clear();
+    buttons.forEach((button) => button.classList.remove("active"));
+    state.axes.x = 0;
+    state.axes.y = 0;
+    state.send();
+  };
+
+  return { reset };
 }
 
 function initButtons(buttons, state) {
@@ -359,8 +493,101 @@ function clamp(value) {
   return Math.max(-1, Math.min(1, value));
 }
 
+function initControlMode({
+  toggleButton,
+  controller,
+  stickElement,
+  dpadElement,
+  stickControls,
+  dpadControls,
+}) {
+  const applyMode = (nextMode, { persist = false } = {}) => {
+    const normalized = normalizeInputMode(nextMode);
+    if (persist) {
+      persistInputMode(normalized);
+    }
+
+    if (controller) {
+      controller.dataset.mode = normalized;
+    }
+    if (stickElement) {
+      stickElement.setAttribute(
+        "aria-hidden",
+        normalized === INPUT_MODES.DPAD ? "true" : "false",
+      );
+    }
+    if (dpadElement) {
+      dpadElement.setAttribute(
+        "aria-hidden",
+        normalized === INPUT_MODES.DPAD ? "false" : "true",
+      );
+    }
+
+    const isDpad = normalized === INPUT_MODES.DPAD;
+    if (toggleButton) {
+      const nextLabel = isDpad ? "スティックに切り替え" : "十字キーに切り替え";
+      toggleButton.textContent = nextLabel;
+      toggleButton.setAttribute("aria-pressed", isDpad ? "true" : "false");
+      const ariaLabel = isDpad ? "スティック操作に切り替え" : "十字キー操作に切り替え";
+      toggleButton.setAttribute("aria-label", ariaLabel);
+      toggleButton.setAttribute("title", ariaLabel);
+    }
+
+    if (isDpad) {
+      if (stickControls && typeof stickControls.reset === "function") {
+        stickControls.reset();
+      }
+      if (dpadControls && typeof dpadControls.reset === "function") {
+        dpadControls.reset();
+      }
+    } else {
+      if (dpadControls && typeof dpadControls.reset === "function") {
+        dpadControls.reset();
+      }
+      if (stickControls && typeof stickControls.reset === "function") {
+        stickControls.reset();
+      }
+    }
+
+    return normalized;
+  };
+
+  let currentMode = applyMode(readStoredInputMode());
+
+  if (toggleButton) {
+    toggleButton.addEventListener("click", () => {
+      currentMode = currentMode === INPUT_MODES.DPAD ? INPUT_MODES.STICK : INPUT_MODES.DPAD;
+      applyMode(currentMode, { persist: true });
+    });
+  }
+}
+
 function isValidPlayerId(id) {
   return id === "p1" || id === "p2" || id === "p3" || id === "p4";
+}
+
+function readStoredInputMode() {
+  try {
+    const stored = window.localStorage.getItem(INPUT_MODE_STORAGE_KEY);
+    if (stored === INPUT_MODES.STICK || stored === INPUT_MODES.DPAD) {
+      return stored;
+    }
+  } catch (_) {
+    // ignore storage access issues
+  }
+  return INPUT_MODES.STICK;
+}
+
+function persistInputMode(mode) {
+  try {
+    window.localStorage.setItem(INPUT_MODE_STORAGE_KEY, normalizeInputMode(mode));
+  } catch (_) {
+    // ignore storage write issues
+  }
+}
+
+function normalizeInputMode(mode) {
+  return mode === INPUT_MODES.DPAD ? INPUT_MODES.DPAD : INPUT_MODES.STICK;
 }
 
 function initTheme(toggleButton) {

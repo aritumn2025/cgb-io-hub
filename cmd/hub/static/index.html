@@ -46,7 +46,19 @@
           aria-labelledby="info-panel-title"
         >
           <p class="info-panel-title" id="info-panel-title">操作説明</p>
-          <p>スティックはドラッグ、ボタンはタップで入力されます。</p>
+          <p>スティックはドラッグ、十字キーはタップで入力されます。</p>
+          <div class="control-toggle" id="control-toggle">
+            <p class="control-toggle__label">入力モード</p>
+            <button
+              type="button"
+              class="control-toggle__button"
+              data-control-toggle
+              aria-pressed="false"
+              aria-label="十字キー操作に切り替え"
+            >
+              十字キーに切り替え
+            </button>
+          </div>
           <div class="theme-toggle" id="theme-toggle">
             <button
               type="button"
@@ -67,9 +79,43 @@
           </div>
         </div>
       </div>
-      <section class="controller">
-        <div class="stick-area" id="stick">
+      <section class="controller" data-mode="stick">
+        <div class="stick-area" id="stick" aria-hidden="false">
           <div class="stick-thumb" id="stick-thumb"></div>
+        </div>
+        <div class="dpad-area" id="dpad" aria-hidden="true">
+          <button
+            type="button"
+            class="dpad-button dpad-button--up"
+            data-dpad="up"
+            aria-label="上"
+          >
+            ↑
+          </button>
+          <button
+            type="button"
+            class="dpad-button dpad-button--left"
+            data-dpad="left"
+            aria-label="左"
+          >
+            ←
+          </button>
+          <button
+            type="button"
+            class="dpad-button dpad-button--right"
+            data-dpad="right"
+            aria-label="右"
+          >
+            →
+          </button>
+          <button
+            type="button"
+            class="dpad-button dpad-button--down"
+            data-dpad="down"
+            aria-label="下"
+          >
+            ↓
+          </button>
         </div>
         <div class="buttons">
           <button type="button" class="primary-action" data-btn="a">
