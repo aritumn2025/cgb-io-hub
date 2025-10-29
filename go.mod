@@ -1,4 +1,4 @@
-module github.com/59GauthierLab/stg48-backend
+module github.com/59GauthierLab/cgb-backend
 
 go 1.25.3
 
