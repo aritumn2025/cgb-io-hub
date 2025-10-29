@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <div class="layout-root" id="layout-root">
+    <main id="controller-screen">
       <div class="info-menu" id="info-menu">
         <button
           type="button"
@@ -30,9 +30,6 @@
           <p class="info-panel-title" id="info-panel-title">操作説明</p>
           <p>スティックはドラッグ、ボタンはタップで入力されます。</p>
           <div class="theme-toggle" id="theme-toggle">
-            <div class="theme-toggle__label">
-              <span>テーマ設定</span>
-            </div>
             <button
               type="button"
               class="theme-toggle__button"
@@ -45,36 +42,16 @@
                 aria-hidden="true"
                 >☾</span
               >
-              <span class="theme-toggle__text" data-theme-text>ダークモード</span>
-            </button>
-          </div>
-          <div class="orientation-toggle" id="orientation-toggle">
-            <div class="orientation-toggle__label">
-              <span>画面向き</span>
-            </div>
-            <button
-              type="button"
-              class="orientation-toggle__button"
-              data-orientation-toggle
-              aria-pressed="false"
-            >
-              <span
-                class="orientation-toggle__icon"
-                data-orientation-icon
-                aria-hidden="true"
-                >↻</span
+              <span class="theme-toggle__text" data-theme-text
+                >ダークモード</span
               >
-              <span class="orientation-toggle__text" data-orientation-text>
-                横向きモード
-              </span>
             </button>
           </div>
         </div>
       </div>
-      <main id="controller-screen">
-        <section class="controller">
-          <div class="stick-area" id="stick">
-            <div class="stick-thumb" id="stick-thumb"></div>
+      <section class="controller">
+        <div class="stick-area" id="stick">
+          <div class="stick-thumb" id="stick-thumb"></div>
         </div>
         <div class="buttons">
           <button type="button" class="primary-action" data-btn="a">
@@ -87,52 +64,51 @@
         ／ <span data-status>未接続</span>
         <span class="status-lamp" data-lamp></span>
       </p>
-      </main>
-      <section
-        class="player-picker is-hidden"
-        id="player-picker"
-        aria-labelledby="player-picker-title"
-      >
-        <div class="player-picker__content">
-          <h1 class="player-picker__title" id="player-picker-title">
-            プレイヤーを選択
-          </h1>
-          <p class="player-picker__description">
-            利用するコントローラーを選択してください。
-          </p>
-          <div class="player-picker__buttons">
-            <button
-              type="button"
-              class="player-picker__button"
-              data-player-id="p1"
-            >
-              プレイヤー１
-            </button>
-            <button
-              type="button"
-              class="player-picker__button"
-              data-player-id="p2"
-            >
-              プレイヤー２
-            </button>
-            <button
-              type="button"
-              class="player-picker__button"
-              data-player-id="p3"
-            >
-              プレイヤー３
-            </button>
-            <button
-              type="button"
-              class="player-picker__button"
-              data-player-id="p4"
-            >
-              プレイヤー４
-            </button>
-          </div>
+    </main>
+    <section
+      class="player-picker is-hidden"
+      id="player-picker"
+      aria-labelledby="player-picker-title"
+    >
+      <div class="player-picker__content">
+        <h1 class="player-picker__title" id="player-picker-title">
+          プレイヤーを選択
+        </h1>
+        <p class="player-picker__description">
+          利用するコントローラーを選択してください。
+        </p>
+        <div class="player-picker__buttons">
+          <button
+            type="button"
+            class="player-picker__button"
+            data-player-id="p1"
+          >
+            プレイヤー１
+          </button>
+          <button
+            type="button"
+            class="player-picker__button"
+            data-player-id="p2"
+          >
+            プレイヤー２
+          </button>
+          <button
+            type="button"
+            class="player-picker__button"
+            data-player-id="p3"
+          >
+            プレイヤー３
+          </button>
+          <button
+            type="button"
+            class="player-picker__button"
+            data-player-id="p4"
+          >
+            プレイヤー４
+          </button>
         </div>
-      </section>
-    </div>
+      </div>
+    </section>
     <script src="controller.js" defer></script>
   </body>
 </html>

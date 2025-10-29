@@ -1,7 +1,4 @@
 const THEME_STORAGE_KEY = "stg48:theme";
-const ORIENTATION_STORAGE_KEY = "stg48:orientation";
-
-let currentOrientation = "portrait";
 
 document.addEventListener("DOMContentLoaded", () => {
   const statusEl = document.querySelector("[data-status]");
@@ -15,9 +12,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const controllerScreen = document.getElementById("controller-screen");
   const playerPicker = document.getElementById("player-picker");
   const themeToggle = document.querySelector("[data-theme-toggle]");
-  const orientationToggle = document.querySelector("[data-orientation-toggle]");
-
-  initOrientation(orientationToggle);
 
   initTheme(themeToggle);
 
@@ -226,9 +220,8 @@ function initStick(stick, thumb, state) {
     const relY = (event.clientY - rect.top) / rect.height;
     const x = clamp(relX * 2 - 1);
     const y = clamp(relY * 2 - 1);
-    const mapped = mapAxes(x, y);
-    state.axes.x = parseFloat(mapped.x.toFixed(3));
-    state.axes.y = parseFloat(mapped.y.toFixed(3));
+    state.axes.x = parseFloat(x.toFixed(3));
+    state.axes.y = parseFloat((-y).toFixed(3));
     updateThumb(x, y);
     state.send();
   };
@@ -366,90 +359,8 @@ function clamp(value) {
   return Math.max(-1, Math.min(1, value));
 }
 
-function mapAxes(x, y) {
-  const horizontal = x;
-  const vertical = -y;
-  if (currentOrientation === "landscape") {
-    return { x: -vertical, y: horizontal };
-  }
-  return { x: horizontal, y: vertical };
-}
-
 function isValidPlayerId(id) {
   return id === "p1" || id === "p2" || id === "p3" || id === "p4";
-}
-
-function initOrientation(toggleButton) {
-  currentOrientation = normalizeOrientation(readStoredOrientation() || "portrait");
-  applyOrientation(currentOrientation, toggleButton);
-
-  if (!toggleButton) {
-    return;
-  }
-
-  toggleButton.addEventListener("click", () => {
-    currentOrientation = currentOrientation === "landscape" ? "portrait" : "landscape";
-    applyOrientation(currentOrientation, toggleButton);
-    persistOrientationPreference(currentOrientation);
-  });
-}
-
-function applyOrientation(orientation, toggleButton) {
-  const normalized = normalizeOrientation(orientation);
-  currentOrientation = normalized;
-  const body = document.body;
-  if (body) {
-    if (normalized === "landscape") {
-      body.classList.add("orientation-landscape");
-    } else {
-      body.classList.remove("orientation-landscape");
-    }
-  }
-
-  if (!toggleButton) {
-    return;
-  }
-
-  const icon = toggleButton.querySelector("[data-orientation-icon]");
-  const text = toggleButton.querySelector("[data-orientation-text]");
-  const isLandscape = normalized === "landscape";
-  if (icon) {
-    icon.textContent = isLandscape ? "↺" : "↻";
-  }
-  if (text) {
-    text.textContent = isLandscape ? "縦向きモード" : "横向きモード";
-  }
-  toggleButton.setAttribute("aria-label", isLandscape ? "縦向きモードに戻す" : "横向きモードにする");
-  toggleButton.setAttribute("title", isLandscape ? "縦向きに戻す" : "横向きモードにする");
-  toggleButton.setAttribute("aria-pressed", isLandscape ? "true" : "false");
-  toggleButton.dataset.orientationTarget = isLandscape ? "portrait" : "landscape";
-}
-
-function readStoredOrientation() {
-  try {
-    const stored = window.localStorage.getItem(ORIENTATION_STORAGE_KEY);
-    if (stored === "landscape" || stored === "portrait") {
-      return stored;
-    }
-  } catch (_) {
-    // ignore storage access issues
-  }
-  return null;
-}
-
-function persistOrientationPreference(orientation) {
-  try {
-    window.localStorage.setItem(
-      ORIENTATION_STORAGE_KEY,
-      normalizeOrientation(orientation),
-    );
-  } catch (_) {
-    // ignore storage write issues
-  }
-}
-
-function normalizeOrientation(value) {
-  return value === "landscape" ? "landscape" : "portrait";
 }
 
 function initTheme(toggleButton) {
