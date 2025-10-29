@@ -1,4 +1,4 @@
-module github.com/59GauthierLab/cgb-backend
+module github.com/59GauthierLab/cgb-ctrl-hub
 
 go 1.25.3
 

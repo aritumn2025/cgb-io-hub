@@ -12,8 +12,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/59GauthierLab/cgb-backend/internal/app"
-	"github.com/59GauthierLab/cgb-backend/internal/config"
+	"github.com/59GauthierLab/cgb-ctrl-hub/internal/app"
+	"github.com/59GauthierLab/cgb-ctrl-hub/internal/config"
 )
 
 //go:embed static
