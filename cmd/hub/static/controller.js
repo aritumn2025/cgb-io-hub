@@ -7,6 +7,18 @@ document.addEventListener("DOMContentLoaded", () => {
   const stick = document.getElementById("stick");
   const thumb = document.getElementById("stick-thumb");
   const actionButtons = document.querySelectorAll("[data-btn]");
+  const controllerScreen = document.getElementById("controller-screen");
+  const playerPicker = document.getElementById("player-picker");
+
+  initPlayerPicker(playerPicker);
+
+  const controllerId = getControllerId();
+
+  setScreenVisibility({ controllerScreen, playerPicker, showPicker: !controllerId });
+
+  if (!controllerId) {
+    return;
+  }
 
   if (!statusEl || !lampEl || !idEl || !infoMenu || !infoToggle || !stick || !thumb) {
     return;
@@ -14,7 +26,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   initInfoMenu(infoMenu, infoToggle);
 
-  const controllerId = getControllerId();
   idEl.textContent = formatDisplayId(controllerId);
 
   const status = createStatusManager(statusEl, lampEl);
@@ -269,9 +280,47 @@ function initButtons(buttons, state) {
   });
 }
 
+function initPlayerPicker(playerPicker) {
+  if (!playerPicker) {
+    return;
+  }
+
+  const buttons = playerPicker.querySelectorAll("[data-player-id]");
+  buttons.forEach((button) => {
+    button.addEventListener("click", () => {
+      const playerId = button.dataset.playerId;
+      if (!playerId) {
+        return;
+      }
+      const normalized = playerId.toLowerCase();
+      if (!isValidPlayerId(normalized)) {
+        return;
+      }
+      const params = new URLSearchParams(window.location.search);
+      params.set("id", normalized);
+      const query = params.toString();
+      const nextUrl = query ? `${window.location.pathname}?${query}` : window.location.pathname;
+      window.location.assign(nextUrl);
+    });
+  });
+}
+
+function setScreenVisibility({ controllerScreen, playerPicker, showPicker }) {
+  if (controllerScreen) {
+    controllerScreen.classList.toggle("is-hidden", Boolean(showPicker));
+  }
+  if (playerPicker) {
+    playerPicker.classList.toggle("is-hidden", !showPicker);
+  }
+}
+
 function getControllerId() {
   const params = new URLSearchParams(window.location.search);
-  return (params.get("id") || "p1").toLowerCase();
+  if (!params.has("id")) {
+    return null;
+  }
+  const id = params.get("id") || "p1";
+  return id.toLowerCase();
 }
 
 function formatDisplayId(id) {
@@ -302,3 +351,6 @@ function clamp(value) {
   return Math.max(-1, Math.min(1, value));
 }
 
+function isValidPlayerId(id) {
+  return id === "p1" || id === "p2" || id === "p3" || id === "p4";
+}

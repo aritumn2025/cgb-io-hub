@@ -14,6 +14,10 @@ body {
   justify-content: center;
 }
 
+#controller-screen.is-hidden {
+  display: none;
+}
+
 main {
   width: min(480px, 90vw);
   display: flex;
@@ -111,6 +115,55 @@ button:active,
 button.active {
   transform: scale(0.95);
   background: rgba(255, 255, 255, 0.2);
+}
+
+.player-picker {
+  width: min(480px, 90vw);
+  padding: 32px 24px 72px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.player-picker.is-hidden {
+  display: none;
+}
+
+.player-picker__content {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 32px 24px;
+  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.35);
+}
+
+.player-picker__title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.player-picker__description {
+  margin: 0;
+  opacity: 0.85;
+  line-height: 1.6;
+  font-size: 1rem;
+}
+
+.player-picker__buttons {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.player-picker__button {
+  font-size: 1.1rem;
 }
 
 .info-menu {
@@ -233,4 +286,3 @@ button.active {
   font-weight: 600;
   font-size: 1.1rem;
 }
-

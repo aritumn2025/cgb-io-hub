@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <main>
+    <main id="controller-screen">
       <div class="info-menu" id="info-menu">
         <button
           type="button"
@@ -42,6 +42,30 @@
         <span class="status-lamp" data-lamp></span>
       </p>
     </main>
+    <section
+      class="player-picker is-hidden"
+      id="player-picker"
+      aria-labelledby="player-picker-title"
+    >
+      <div class="player-picker__content">
+        <h1 class="player-picker__title" id="player-picker-title">プレイヤーを選択</h1>
+        <p class="player-picker__description">利用するコントローラーを選択してください。</p>
+        <div class="player-picker__buttons">
+          <button type="button" class="player-picker__button" data-player-id="p1">
+            プレイヤー１
+          </button>
+          <button type="button" class="player-picker__button" data-player-id="p2">
+            プレイヤー２
+          </button>
+          <button type="button" class="player-picker__button" data-player-id="p3">
+            プレイヤー３
+          </button>
+          <button type="button" class="player-picker__button" data-player-id="p4">
+            プレイヤー４
+          </button>
+        </div>
+      </div>
+    </section>
     <script src="controller.js" defer></script>
   </body>
 </html>
