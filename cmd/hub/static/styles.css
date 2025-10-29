@@ -18,12 +18,41 @@
 body {
   margin: 0;
   padding: 0;
+  width: 100vw;
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
   background: var(--color-bg);
   color: var(--color-text);
+  overflow-x: hidden;
+}
+
+.layout-root {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  pointer-events: none;
+}
+
+.layout-root > * {
+  pointer-events: auto;
+}
+
+body.orientation-landscape {
+  overflow: hidden;
+}
+
+body.orientation-landscape .layout-root {
+  width: 100vh;
+  height: 100vw;
+  transform: rotate(90deg);
+  transform-origin: center;
 }
 
 body.theme-dark {
@@ -58,16 +87,18 @@ main {
   padding: 32px 24px 120px;
   box-sizing: border-box;
   position: relative;
+  min-height: 100%;
 }
+
 
 .status {
   text-align: center;
   font-size: 1rem;
   opacity: 0.9;
-  position: fixed;
+  position: absolute;
   bottom: 32px;
-  left: 0;
-  width: 100%;
+  left: 50%;
+  transform: translateX(-50%);
   pointer-events: none;
   display: flex;
   justify-content: center;
@@ -156,6 +187,7 @@ button.active {
   display: flex;
   align-items: center;
   justify-content: center;
+  height: 100%;
 }
 
 .player-picker.is-hidden {
@@ -199,7 +231,7 @@ button.active {
 }
 
 .info-menu {
-  position: fixed;
+  position: absolute;
   top: 12px;
   right: 12px;
   display: flex;
@@ -207,7 +239,14 @@ button.active {
   align-items: flex-end;
   gap: 12px;
   pointer-events: none;
-  z-index: 10;
+  z-index: 3;
+}
+
+body.orientation-landscape .info-menu {
+  top: auto;
+  right: auto;
+  bottom: 12px;
+  left: 12px;
 }
 
 .info-toggle {
@@ -302,7 +341,8 @@ button.active {
   border-radius: 6px;
 }
 
-.theme-toggle {
+.theme-toggle,
+.orientation-toggle {
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -313,14 +353,22 @@ button.active {
   border-top: 1px solid var(--color-border);
 }
 
-.theme-toggle__label {
+.orientation-toggle {
+  padding-top: 12px;
+  margin-top: 12px;
+  border-top: none;
+}
+
+.theme-toggle__label,
+.orientation-toggle__label {
   margin: 0;
   font-size: 0.95rem;
   font-weight: 600;
   text-align: center;
 }
 
-.theme-toggle__button {
+.theme-toggle__button,
+.orientation-toggle__button {
   padding: 14px 20px;
   border-radius: 999px;
   font-size: 0.95rem;
@@ -334,27 +382,34 @@ button.active {
   line-height: 1;
   transition: border-color 120ms ease;
   width: 100%;
+  transform: none;
 }
 
-.theme-toggle__button:active {
+.theme-toggle__button:active,
+.orientation-toggle__button:active {
+  border-color: rgba(88, 156, 255, 0.65);
+  transform: none;
+}
+
+.theme-toggle__button[aria-pressed="true"],
+.orientation-toggle__button[aria-pressed="true"] {
   border-color: rgba(88, 156, 255, 0.65);
 }
 
-.theme-toggle__button[aria-pressed="true"] {
-  border-color: rgba(88, 156, 255, 0.65);
-}
-
-.theme-toggle__button:focus-visible {
+.theme-toggle__button:focus-visible,
+.orientation-toggle__button:focus-visible {
   outline: 2px solid rgba(88, 156, 255, 0.65);
   outline-offset: 3px;
 }
 
-.theme-toggle__icon {
+.theme-toggle__icon,
+.orientation-toggle__icon {
   font-size: 1.15rem;
   display: inline-flex;
 }
 
-.theme-toggle__text {
+.theme-toggle__text,
+.orientation-toggle__text {
   font-weight: 600;
 }
 
