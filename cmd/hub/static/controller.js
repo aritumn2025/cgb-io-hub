@@ -1,3 +1,5 @@
+const THEME_STORAGE_KEY = "stg48:theme";
+
 document.addEventListener("DOMContentLoaded", () => {
   const statusEl = document.querySelector("[data-status]");
   const lampEl = document.querySelector("[data-lamp]");
@@ -9,6 +11,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const actionButtons = document.querySelectorAll("[data-btn]");
   const controllerScreen = document.getElementById("controller-screen");
   const playerPicker = document.getElementById("player-picker");
+  const themeToggle = document.querySelector("[data-theme-toggle]");
+
+  initTheme(themeToggle);
 
   initPlayerPicker(playerPicker);
 
@@ -319,8 +324,11 @@ function getControllerId() {
   if (!params.has("id")) {
     return null;
   }
-  const id = params.get("id") || "p1";
-  return id.toLowerCase();
+  const id = (params.get("id") || "").toLowerCase();
+  if (!isValidPlayerId(id)) {
+    return null;
+  }
+  return id;
 }
 
 function formatDisplayId(id) {
@@ -353,4 +361,71 @@ function clamp(value) {
 
 function isValidPlayerId(id) {
   return id === "p1" || id === "p2" || id === "p3" || id === "p4";
+}
+
+function initTheme(toggleButton) {
+  let currentTheme = readStoredTheme() || detectSystemTheme();
+  currentTheme = normalizeTheme(currentTheme);
+  applyTheme(currentTheme, toggleButton);
+
+  if (!toggleButton) {
+    return;
+  }
+
+  toggleButton.addEventListener("click", () => {
+    currentTheme = currentTheme === "light" ? "dark" : "light";
+    applyTheme(currentTheme, toggleButton);
+    persistThemePreference(currentTheme);
+  });
+}
+
+function applyTheme(theme, toggleButton) {
+  const normalized = normalizeTheme(theme);
+  const body = document.body;
+  if (!body) {
+    return;
+  }
+
+  body.classList.toggle("theme-light", normalized === "light");
+  body.classList.toggle("theme-dark", normalized === "dark");
+
+  if (!toggleButton) {
+    return;
+  }
+
+  const label = normalized === "light" ? "ダークモードに切り替え" : "ライトモードに切り替え";
+  toggleButton.textContent = label;
+  toggleButton.setAttribute("aria-label", label);
+  toggleButton.setAttribute("aria-pressed", normalized === "light" ? "true" : "false");
+}
+
+function readStoredTheme() {
+  try {
+    const stored = window.localStorage.getItem(THEME_STORAGE_KEY);
+    if (stored === "light" || stored === "dark") {
+      return stored;
+    }
+  } catch (_) {
+    // ignore storage access issues
+  }
+  return null;
+}
+
+function persistThemePreference(theme) {
+  try {
+    window.localStorage.setItem(THEME_STORAGE_KEY, normalizeTheme(theme));
+  } catch (_) {
+    // ignore storage write issues
+  }
+}
+
+function detectSystemTheme() {
+  if (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches) {
+    return "light";
+  }
+  return "dark";
+}
+
+function normalizeTheme(theme) {
+  return theme === "light" ? "light" : "dark";
 }

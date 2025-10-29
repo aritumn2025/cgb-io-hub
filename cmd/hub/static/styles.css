@@ -1,8 +1,18 @@
 :root {
   color-scheme: dark light;
   font-family: "Segoe UI", "Hiragino Sans", sans-serif;
-  background: #101418;
-  color: #f2f5f8;
+  --color-bg: #101418;
+  --color-text: #f2f5f8;
+  --color-surface: rgba(255, 255, 255, 0.06);
+  --color-surface-strong: rgba(255, 255, 255, 0.12);
+  --color-elevated-bg: rgba(8, 12, 16, 0.92);
+  --color-border: rgba(255, 255, 255, 0.16);
+  --color-button-bg: rgba(255, 255, 255, 0.08);
+  --color-button-active-bg: rgba(255, 255, 255, 0.2);
+  --color-code-bg: rgba(255, 255, 255, 0.14);
+  --color-shadow: rgba(0, 0, 0, 0.35);
+  --color-elevated-shadow: rgba(0, 0, 0, 0.4);
+  --color-lamp-idle: #666666;
 }
 
 body {
@@ -12,6 +22,28 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+body.theme-dark {
+  color-scheme: dark;
+}
+
+body.theme-light {
+  color-scheme: light;
+  --color-bg: #f4f6fb;
+  --color-text: #161b27;
+  --color-surface: rgba(0, 0, 0, 0.06);
+  --color-surface-strong: rgba(0, 0, 0, 0.12);
+  --color-elevated-bg: #ffffff;
+  --color-border: rgba(0, 0, 0, 0.12);
+  --color-button-bg: rgba(0, 0, 0, 0.05);
+  --color-button-active-bg: rgba(0, 0, 0, 0.12);
+  --color-code-bg: rgba(0, 0, 0, 0.08);
+  --color-shadow: rgba(15, 25, 40, 0.12);
+  --color-elevated-shadow: rgba(15, 25, 40, 0.16);
+  --color-lamp-idle: #999999;
 }
 
 #controller-screen.is-hidden {
@@ -54,7 +86,7 @@ main {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: #666;
+  background: var(--color-lamp-idle);
   display: inline-block;
 }
 
@@ -69,10 +101,10 @@ main {
   width: 100%;
   aspect-ratio: 1 / 1;
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--color-surface);
   position: relative;
   touch-action: none;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--color-border);
 }
 
 .stick-thumb {
@@ -83,7 +115,7 @@ main {
   max-height: 35%;
   border-radius: 50%;
   background: rgba(88, 156, 255, 0.85);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 10px 24px var(--color-shadow);
   pointer-events: none;
   transform: translate(-50%, -50%);
   left: 50%;
@@ -105,7 +137,7 @@ button {
   padding: 14px 0;
   border-radius: 999px;
   border: none;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--color-button-bg);
   color: inherit;
   touch-action: manipulation;
   transition: transform 80ms ease, background 120ms ease;
@@ -114,7 +146,7 @@ button {
 button:active,
 button.active {
   transform: scale(0.95);
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--color-button-active-bg);
 }
 
 .player-picker {
@@ -136,11 +168,11 @@ button.active {
   gap: 24px;
   width: 100%;
   text-align: center;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--color-elevated-bg);
   border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--color-border);
   padding: 32px 24px;
-  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 18px 36px var(--color-shadow);
 }
 
 .player-picker__title {
@@ -183,7 +215,7 @@ button.active {
   height: 44px;
   border-radius: 12px;
   border: none;
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--color-surface-strong);
   color: inherit;
   display: inline-flex;
   flex-direction: column;
@@ -208,7 +240,7 @@ button.active {
 }
 
 .info-menu.open .info-toggle {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--color-button-active-bg);
 }
 
 .info-menu.open .info-toggle span:nth-child(1) {
@@ -228,9 +260,9 @@ button.active {
   max-width: clamp(240px, 60vw, 320px);
   padding: 18px 20px;
   border-radius: 14px;
-  background: rgba(8, 12, 16, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.4);
+  background: var(--color-elevated-bg);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 18px 36px var(--color-elevated-shadow);
   font-size: 0.9rem;
   line-height: 1.6;
   color: inherit;
@@ -265,9 +297,37 @@ button.active {
 .info-panel code {
   font-family: inherit;
   font-size: 0.86em;
-  background: rgba(255, 255, 255, 0.14);
+  background: var(--color-code-bg);
   padding: 0 6px;
   border-radius: 6px;
+}
+
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 16px;
+  margin-top: 16px;
+  border-top: 1px solid var(--color-border);
+}
+
+.theme-toggle__label {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.theme-toggle__button {
+  padding: 10px 16px;
+  border-radius: 999px;
+  font-size: 0.95rem;
+  pointer-events: auto;
+  background: var(--color-button-bg);
+}
+
+.theme-toggle__button:active {
+  background: var(--color-button-active-bg);
 }
 
 .primary-action {
