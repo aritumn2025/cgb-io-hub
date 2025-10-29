@@ -305,7 +305,7 @@ button.active {
 .theme-toggle {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   justify-content: center;
   gap: 14px;
   padding-top: 16px;
@@ -321,24 +321,27 @@ button.active {
 }
 
 .theme-toggle__button {
-  padding: 12px 20px;
+  padding: 14px 20px;
   border-radius: 999px;
   font-size: 0.95rem;
   pointer-events: auto;
-  background: var(--color-button-bg);
+  background: none;
+  border: 1px solid var(--color-border);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
   line-height: 1;
+  transition: border-color 120ms ease;
+  width: 100%;
 }
 
 .theme-toggle__button:active {
-  background: var(--color-button-active-bg);
+  border-color: rgba(88, 156, 255, 0.65);
 }
 
 .theme-toggle__button[aria-pressed="true"] {
-  background: var(--color-button-active-bg);
+  border-color: rgba(88, 156, 255, 0.65);
 }
 
 .theme-toggle__button:focus-visible {
