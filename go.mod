@@ -1,4 +1,4 @@
-module github.com/59GauthierLab/cgb-ctrl-hub
+module github.com/aritumn2025/cgb-io-hub
 
 go 1.25.3
 

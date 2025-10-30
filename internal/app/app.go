@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/59GauthierLab/cgb-ctrl-hub/internal/config"
-	"github.com/59GauthierLab/cgb-ctrl-hub/internal/hub"
+	"github.com/aritumn2025/cgb-io-hub/internal/config"
+	"github.com/aritumn2025/cgb-io-hub/internal/hub"
 )
 
 const (

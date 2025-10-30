@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/59GauthierLab/cgb-ctrl-hub/internal/hub"
+	"github.com/aritumn2025/cgb-io-hub/internal/hub"
 )
 
 func buildRouter(h *hub.Hub, assets http.FileSystem) http.Handler {
