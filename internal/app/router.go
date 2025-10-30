@@ -2,22 +2,286 @@ package app
 
 import (
 	"bufio"
+	"encoding/json"
 	"errors"
+	"io"
 	"log/slog"
 	"net"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 
 	"github.com/aritumn2025/cgb-io-hub/internal/hub"
+	"github.com/aritumn2025/cgb-io-hub/internal/persona"
 )
 
-func buildRouter(h *hub.Hub, assets http.FileSystem) http.Handler {
+func (a *App) buildRouter(assets http.FileSystem) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", healthHandler)
-	mux.Handle("/ws", http.HandlerFunc(h.HandleWS))
+	mux.Handle("/ws", http.HandlerFunc(a.hub.HandleWS))
+	mux.HandleFunc("/api/controller/session", a.controllerSessionHandler)
+	mux.HandleFunc("/api/controller/assignments", a.controllerAssignmentsHandler)
+	mux.HandleFunc("/api/game/start", a.gameStartHandler)
 	mux.Handle("/", http.FileServer(assets))
 	return mux
+}
+
+func (a *App) controllerSessionHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", http.MethodPost)
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	if a.persona == nil {
+		a.respondJSON(w, http.StatusServiceUnavailable, map[string]string{
+			"error": "persona integration disabled",
+		})
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+	defer r.Body.Close()
+
+	var req struct {
+		UserID string `json:"userId"`
+	}
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&req); err != nil {
+		if errors.Is(err, io.EOF) {
+			a.respondJSON(w, http.StatusBadRequest, map[string]string{"error": "request body required"})
+			return
+		}
+		a.respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid JSON payload"})
+		return
+	}
+	if err := decoder.Decode(new(struct{})); err != io.EOF {
+		a.respondJSON(w, http.StatusBadRequest, map[string]string{"error": "unexpected trailing content"})
+		return
+	}
+
+	userID := strings.TrimSpace(req.UserID)
+	if userID == "" {
+		a.respondJSON(w, http.StatusBadRequest, map[string]string{"error": "userId is required"})
+		return
+	}
+
+	slot, err := a.persona.FindSlotForUser(r.Context(), userID)
+	if err != nil {
+		if errors.Is(err, persona.ErrUserNotFound) {
+			a.respondJSON(w, http.StatusNotFound, map[string]string{"error": "user not present in lobby"})
+			return
+		}
+		a.logger.Error("persona_lookup_failed", "user_id", userID, "err", err.Error())
+		a.respondJSON(w, http.StatusBadGateway, map[string]string{"error": "failed to verify user lobby assignment"})
+		return
+	}
+
+	token, expiresAt, err := a.hub.IssueControllerToken(
+		slot.SlotID,
+		slot.UserID,
+		slot.Name,
+		slot.Personality,
+		a.cfg.SessionTokenTTL,
+	)
+	if err != nil {
+		a.logger.Error("token_issue_failed", "slot", slot.SlotID, "user_id", slot.UserID, "err", err.Error())
+		a.respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to issue controller token"})
+		return
+	}
+
+	ttlSeconds := int(time.Until(expiresAt).Seconds())
+	if ttlSeconds < 1 {
+		ttlSeconds = int(a.cfg.SessionTokenTTL.Seconds())
+		if ttlSeconds < 1 {
+			ttlSeconds = 60
+		}
+	}
+
+	a.respondJSON(w, http.StatusCreated, map[string]any{
+		"slotId":    slot.SlotID,
+		"token":     token,
+		"ttl":       ttlSeconds,
+		"expiresAt": expiresAt.UTC().Format(time.RFC3339),
+		"user": map[string]string{
+			"id":          slot.UserID,
+			"name":        slot.Name,
+			"personality": slot.Personality,
+		},
+		"gameId": a.cfg.PersonaGameName,
+	})
+}
+
+func (a *App) controllerAssignmentsHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", http.MethodGet)
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	assignments := a.hub.ControllerAssignments()
+	type assignmentResponse struct {
+		SlotID         string  `json:"slotId"`
+		UserID         string  `json:"userId,omitempty"`
+		Name           string  `json:"name,omitempty"`
+		Personality    string  `json:"personality,omitempty"`
+		Connected      bool    `json:"connected"`
+		LastSeen       *string `json:"lastSeen,omitempty"`
+		TokenExpiresAt *string `json:"tokenExpiresAt,omitempty"`
+	}
+
+	responses := make([]assignmentResponse, 0, len(assignments))
+	for _, record := range assignments {
+		resp := assignmentResponse{
+			SlotID:      record.SlotID,
+			UserID:      record.UserID,
+			Name:        record.Name,
+			Personality: record.Personality,
+			Connected:   record.Connected,
+		}
+		if !record.LastSeen.IsZero() {
+			lastSeen := record.LastSeen.UTC().Format(time.RFC3339)
+			resp.LastSeen = &lastSeen
+		}
+		if !record.TokenExpiresAt.IsZero() {
+			expires := record.TokenExpiresAt.UTC().Format(time.RFC3339)
+			resp.TokenExpiresAt = &expires
+		}
+		responses = append(responses, resp)
+	}
+
+	a.respondJSON(w, http.StatusOK, map[string]any{
+		"assignments": responses,
+	})
+}
+
+func (a *App) gameStartHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", http.MethodPost)
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	if a.persona == nil {
+		a.respondJSON(w, http.StatusServiceUnavailable, map[string]string{
+			"error": "persona integration disabled",
+		})
+		return
+	}
+
+	var req struct {
+		Slots []string `json:"slots"`
+	}
+
+	if r.Body != nil {
+		r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+		defer r.Body.Close()
+
+		decoder := json.NewDecoder(r.Body)
+		decoder.DisallowUnknownFields()
+		if err := decoder.Decode(&req); err != nil {
+			if !errors.Is(err, io.EOF) {
+				a.respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid JSON payload"})
+				return
+			}
+		} else if err := decoder.Decode(new(struct{})); err != io.EOF {
+			a.respondJSON(w, http.StatusBadRequest, map[string]string{"error": "unexpected trailing content"})
+			return
+		}
+	}
+
+	assignments := a.hub.ControllerAssignments()
+	index := make(map[string]hub.ControllerAssignment, len(assignments))
+	for _, rec := range assignments {
+		index[rec.SlotID] = rec
+	}
+
+	targetSlots := make([]string, 0)
+	if len(req.Slots) > 0 {
+		seen := make(map[string]struct{})
+		for _, raw := range req.Slots {
+			slotID := strings.ToLower(strings.TrimSpace(raw))
+			if slotID == "" {
+				continue
+			}
+			if _, exists := seen[slotID]; exists {
+				continue
+			}
+			if _, ok := index[slotID]; !ok {
+				a.respondJSON(w, http.StatusNotFound, map[string]string{"error": "slot not found: " + slotID})
+				return
+			}
+			seen[slotID] = struct{}{}
+			targetSlots = append(targetSlots, slotID)
+		}
+	} else {
+		for slotID, rec := range index {
+			if rec.Connected && rec.UserID != "" {
+				targetSlots = append(targetSlots, slotID)
+			}
+		}
+	}
+
+	if len(targetSlots) == 0 {
+		a.respondJSON(w, http.StatusOK, map[string]any{
+			"gameId":  a.cfg.PersonaGameName,
+			"marked":  []any{},
+			"skipped": []any{},
+			"message": "no eligible players to mark",
+		})
+		return
+	}
+
+	sort.Strings(targetSlots)
+
+	type visitResult struct {
+		SlotID string `json:"slotId"`
+		UserID string `json:"userId"`
+	}
+
+	results := make([]visitResult, 0, len(targetSlots))
+	skipped := make([]string, 0)
+	for _, slotID := range targetSlots {
+		rec := index[slotID]
+		if rec.UserID == "" {
+			skipped = append(skipped, slotID)
+			continue
+		}
+
+		if err := a.persona.RecordVisit(r.Context(), rec.UserID); err != nil {
+			a.logger.Error("persona_visit_failed", "slot", slotID, "user_id", rec.UserID, "err", err.Error())
+			a.respondJSON(w, http.StatusBadGateway, map[string]string{"error": "failed to mark visit for slot " + slotID})
+			return
+		}
+
+		results = append(results, visitResult{
+			SlotID: slotID,
+			UserID: rec.UserID,
+		})
+	}
+
+	a.respondJSON(w, http.StatusOK, map[string]any{
+		"gameId":  a.cfg.PersonaGameName,
+		"marked":  results,
+		"count":   len(results),
+		"slots":   targetSlots,
+		"skipped": skipped,
+	})
+}
+
+func (a *App) respondJSON(w http.ResponseWriter, status int, payload any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	if payload == nil {
+		return
+	}
+	encoder := json.NewEncoder(w)
+	encoder.SetEscapeHTML(false)
+	if err := encoder.Encode(payload); err != nil {
+		a.logger.Error("http_response_encode_error", "status", status, "err", err.Error())
+	}
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {

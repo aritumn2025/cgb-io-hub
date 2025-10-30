@@ -304,6 +304,91 @@ button.active {
 
 .player-picker__button {
   font-size: 1.1rem;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: none;
+  background: var(--color-button-bg);
+  color: inherit;
+  cursor: pointer;
+  transition: background 120ms ease, transform 80ms ease;
+}
+
+.player-picker__button:active {
+  background: var(--color-button-active-bg);
+  transform: scale(0.98);
+}
+
+.player-picker__form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+.player-picker__label {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.player-picker__input {
+  width: 100%;
+  font-size: 1.1rem;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+  background: var(--color-elevated-bg);
+  color: inherit;
+  box-sizing: border-box;
+}
+
+.player-picker__input:focus-visible {
+  outline: 2px solid rgba(88, 156, 255, 0.65);
+  outline-offset: 2px;
+}
+
+.player-picker__hint {
+  margin: 0;
+  font-size: 0.85rem;
+  opacity: 0.75;
+}
+
+.player-picker__error {
+  min-height: 1.2em;
+  margin: 0;
+  color: #ff6b6b;
+  font-size: 0.95rem;
+}
+
+.player-picker__form.is-loading .player-picker__button,
+.player-picker__form.is-loading .player-picker__input {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.session-actions {
+  display: flex;
+  justify-content: center;
+  margin: 12px 0;
+}
+
+.session-actions__button {
+  font-size: 0.9rem;
+  padding: 6px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background: var(--color-button-bg);
+  color: inherit;
+  cursor: pointer;
+  transition: background 120ms ease, transform 80ms ease;
+}
+
+.session-actions__button:active {
+  background: var(--color-button-active-bg);
+  transform: scale(0.97);
 }
 
 .info-menu {

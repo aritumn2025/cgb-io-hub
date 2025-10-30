@@ -76,8 +76,18 @@
               >
             </button>
           </div>
+          <div class="session-actions">
+            <button
+              type="button"
+              class="session-actions__button"
+              data-session-reset
+            >
+              IDを再入力
+            </button>
+          </div>
           <p class="status" role="status">
-            <span data-id></span>
+            <span data-id>未割り当て</span>
+            ／ <span data-user-info>ユーザーID: ---</span>
             ／ <span data-status>未接続</span>
             <span class="status-lamp" data-lamp></span>
           </p>
@@ -130,46 +140,44 @@
     </main>
     <section
       class="player-picker is-hidden"
-      id="player-picker"
-      aria-labelledby="player-picker-title"
+      id="session-form"
+      aria-labelledby="session-form-title"
     >
       <div class="player-picker__content">
-        <h1 class="player-picker__title" id="player-picker-title">
-          プレイヤーを選択
+        <h1 class="player-picker__title" id="session-form-title">
+          ユーザーIDを入力
         </h1>
         <p class="player-picker__description">
-          利用するコントローラーを選択してください。
+          Persona Go のマイページに表示されるユーザーIDを入力すると自動でプレイヤー枠に割り当てられます。
         </p>
-        <div class="player-picker__buttons">
+        <form class="player-picker__form" data-session-form autocomplete="off">
+          <label class="player-picker__label" for="session-user-id">
+            ユーザーID
+            <input
+              type="text"
+              class="player-picker__input"
+              id="session-user-id"
+              data-session-input
+              placeholder="例: k764-3yjp"
+              inputmode="text"
+              autocomplete="off"
+              spellcheck="false"
+              aria-describedby="session-form-hint"
+              required
+            />
+          </label>
           <button
-            type="button"
+            type="submit"
             class="player-picker__button"
-            data-player-id="p1"
+            data-session-submit
           >
-            プレイヤー１
+            接続する
           </button>
-          <button
-            type="button"
-            class="player-picker__button"
-            data-player-id="p2"
-          >
-            プレイヤー２
-          </button>
-          <button
-            type="button"
-            class="player-picker__button"
-            data-player-id="p3"
-          >
-            プレイヤー３
-          </button>
-          <button
-            type="button"
-            class="player-picker__button"
-            data-player-id="p4"
-          >
-            プレイヤー４
-          </button>
-        </div>
+        </form>
+        <p class="player-picker__hint" id="session-form-hint">
+          QR コードを読み取った場合は自動入力されます。
+        </p>
+        <p class="player-picker__error" data-session-error aria-live="polite"></p>
       </div>
     </section>
     <script src="controller.js" defer></script>
