@@ -399,10 +399,11 @@ func (a *App) gameResultHandler(w http.ResponseWriter, r *http.Request) {
 		StartTime string `json:"startTime"`
 		Results   []struct {
 			SlotID string `json:"slotId"`
+			UserID string `json:"userId"`
 			Score  int    `json:"score"`
 			Name   string `json:"name"`
 		} `json:"results"`
-	}
+		}
 
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()
@@ -455,11 +456,7 @@ func (a *App) gameResultHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		seen[slotNum] = slotKey
 
-		assign, ok := index[slotKey]
-		if !ok || strings.TrimSpace(assign.UserID) == "" {
-			a.respondJSON(w, http.StatusNotFound, map[string]string{"error": "slot not assigned to user: " + slotKey})
-			return
-		}
+		assign, assignExists := index[slotKey]
 
 		if entry.Score < 0 {
 			a.respondJSON(w, http.StatusBadRequest, map[string]string{"error": "score must be non-negative"})
@@ -467,13 +464,26 @@ func (a *App) gameResultHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		name := strings.TrimSpace(entry.Name)
-		if name == "" {
+		userID := strings.TrimSpace(entry.UserID)
+
+		if userID == "" {
+			if !assignExists || strings.TrimSpace(assign.UserID) == "" {
+				a.respondJSON(w, http.StatusNotFound, map[string]string{"error": "slot not assigned to user: " + slotKey})
+				return
+			}
+			userID = strings.TrimSpace(assign.UserID)
+		}
+
+		if name == "" && assignExists {
 			name = strings.TrimSpace(assign.Name)
+		}
+		if name == "" {
+			name = userID
 		}
 
 		submissions = append(submissions, persona.GameResult{
 			Slot:   slotNum,
-			UserID: assign.UserID,
+			UserID: userID,
 			Name:   name,
 			Score:  entry.Score,
 		})
