@@ -6,6 +6,7 @@ const INPUT_MODES = {
   STICK: "stick",
   DPAD: "dpad",
 };
+const DEADZONE = 0.22; // 中央の遊び（ここでは ±0.22 を 0 扱い）
 
 document.addEventListener("DOMContentLoaded", () => {
   const statusEl = document.querySelector("[data-status]");
@@ -449,12 +450,24 @@ function initStick(stick, thumb, state) {
     const rect = stick.getBoundingClientRect();
     const relX = (event.clientX - rect.left) / rect.width;
     const relY = (event.clientY - rect.top) / rect.height;
-    const x = clamp(relX * 2 - 1);
-    const y = clamp(relY * 2 - 1);
-    state.axes.x = parseFloat(x.toFixed(3));
-    state.axes.y = parseFloat((-y).toFixed(3));
-    updateThumb(x, y);
+    const rawX = clamp(relX * 2 - 1);
+    const rawY = clamp(relY * 2 - 1);
+    // 見た目はアナログのまま
+    updateThumb(rawX, rawY);
+    // 送信値は -1 / 0 / 1 に量子化（Yは上が +1 になるよう反転済み仕様に合わせる）
+    state.axes.x = quantizeAxis(rawX);
+    state.axes.y = quantizeAxis(-rawY);
     state.send();
+
+    // 4 WAY にしたい場合
+    // let qx = quantizeAxis(rawX);
+    // let qy = quantizeAxis(-rawY);
+    // 斜め禁止（優勢軸のみ残す）- 必要なときだけ有効化
+    // const ax = Math.abs(rawX), ay = Math.abs(rawY);
+    // if (ax > ay) qy = 0; else if (ay > ax) qx = 0;
+    // state.axes.x = qx;
+    // state.axes.y = qy;
+    // state.send();
   };
 
   stick.addEventListener("pointerdown", (event) => {
@@ -692,6 +705,13 @@ function getControllerIdFromQuery() {
 
 function clamp(value) {
   return Math.max(-1, Math.min(1, value));
+}
+
+// スティック入力を -1 / 0 / 1 に量子化する
+// deadzone: 中央の遊び（ここでは ±0.22 を 0 扱い）
+function quantizeAxis(v, deadzone = DEADZONE) {
+  if (Math.abs(v) < deadzone) return 0;
+  return v > 0 ? 1 : -1;
 }
 
 async function requestControllerSession(userId) {
