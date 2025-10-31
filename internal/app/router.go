@@ -276,12 +276,6 @@ func (a *App) gameStartHandler(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	if _, err := a.persona.ClearLobby(r.Context()); err != nil {
-		a.logger.Error("persona_lobby_delete_failed", "err", err.Error())
-		a.respondJSON(w, http.StatusBadGateway, map[string]string{"error": "failed to clear lobby"})
-		return
-	}
-
 	a.respondJSON(w, http.StatusOK, map[string]any{
 		"gameId":  a.cfg.GameID,
 		"marked":  results,
