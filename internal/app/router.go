@@ -23,6 +23,7 @@ func (a *App) buildRouter(assets http.FileSystem) http.Handler {
 	mux.Handle("/ws", http.HandlerFunc(a.hub.HandleWS))
 	mux.HandleFunc("/api/controller/session", a.controllerSessionHandler)
 	mux.HandleFunc("/api/controller/assignments", a.controllerAssignmentsHandler)
+	mux.HandleFunc("/api/game/lobby", a.gameLobbyHandler)
 	mux.HandleFunc("/api/game/start", a.gameStartHandler)
 	mux.HandleFunc("/api/game/result", a.gameResultHandler)
 	mux.Handle("/", http.FileServer(assets))
@@ -275,6 +276,12 @@ func (a *App) gameStartHandler(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
+	if _, err := a.persona.ClearLobby(r.Context()); err != nil {
+		a.logger.Error("persona_lobby_delete_failed", "err", err.Error())
+		a.respondJSON(w, http.StatusBadGateway, map[string]string{"error": "failed to clear lobby"})
+		return
+	}
+
 	a.respondJSON(w, http.StatusOK, map[string]any{
 		"gameId":  a.cfg.GameID,
 		"marked":  results,
@@ -282,6 +289,94 @@ func (a *App) gameStartHandler(w http.ResponseWriter, r *http.Request) {
 		"slots":   targetSlots,
 		"skipped": skipped,
 	})
+}
+
+func (a *App) gameLobbyHandler(w http.ResponseWriter, r *http.Request) {
+	if a.persona == nil {
+		a.respondJSON(w, http.StatusServiceUnavailable, map[string]string{
+			"error": "persona integration disabled",
+		})
+		return
+	}
+
+	switch r.Method {
+	case http.MethodGet:
+		lobby, err := a.persona.FetchLobby(r.Context())
+		if err != nil {
+			a.logger.Error("persona_lobby_fetch_failed", "err", err.Error())
+			a.respondJSON(w, http.StatusBadGateway, map[string]string{"error": "failed to fetch lobby"})
+			return
+		}
+		a.respondJSON(w, http.StatusOK, lobbyResponsePayload(lobby))
+
+	case http.MethodPost:
+		if r.Body == nil {
+			a.respondJSON(w, http.StatusBadRequest, map[string]string{"error": "request body required"})
+			return
+		}
+
+		r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+		defer r.Body.Close()
+
+		var req struct {
+			GameID string             `json:"gameId"`
+			Lobby  map[string]*string `json:"lobby"`
+		}
+		decoder := json.NewDecoder(r.Body)
+		decoder.DisallowUnknownFields()
+		if err := decoder.Decode(&req); err != nil {
+			if errors.Is(err, io.EOF) {
+				a.respondJSON(w, http.StatusBadRequest, map[string]string{"error": "request body required"})
+				return
+			}
+			a.respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid JSON payload"})
+			return
+		}
+		if err := decoder.Decode(new(struct{})); err != io.EOF {
+			a.respondJSON(w, http.StatusBadRequest, map[string]string{"error": "unexpected trailing content"})
+			return
+		}
+
+		if len(req.Lobby) == 0 {
+			a.respondJSON(w, http.StatusBadRequest, map[string]string{"error": "lobby mapping required"})
+			return
+		}
+
+		slots := make(map[int]string, len(req.Lobby))
+		for key, value := range req.Lobby {
+			_, slotNum, ok := normalizeSlotID("p" + key)
+			if !ok {
+				a.respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid slot key: " + key})
+				return
+			}
+			if value == nil {
+				continue
+			}
+			slots[slotNum] = *value
+		}
+
+		lobby, err := a.persona.UpdateLobby(r.Context(), slots)
+		if err != nil {
+			a.logger.Error("persona_lobby_update_failed", "err", err.Error())
+			a.respondJSON(w, http.StatusBadGateway, map[string]string{"error": "failed to update lobby"})
+			return
+		}
+
+		a.respondJSON(w, http.StatusOK, lobbyResponsePayload(lobby))
+
+	case http.MethodDelete:
+		lobby, err := a.persona.ClearLobby(r.Context())
+		if err != nil {
+			a.logger.Error("persona_lobby_delete_failed", "err", err.Error())
+			a.respondJSON(w, http.StatusBadGateway, map[string]string{"error": "failed to clear lobby"})
+			return
+		}
+		a.respondJSON(w, http.StatusOK, lobbyResponsePayload(lobby))
+
+	default:
+		w.Header().Set("Allow", strings.Join([]string{http.MethodGet, http.MethodPost, http.MethodDelete}, ", "))
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	}
 }
 
 func (a *App) gameResultHandler(w http.ResponseWriter, r *http.Request) {
@@ -443,6 +538,34 @@ func normalizeSlotID(raw string) (string, int, bool) {
 		return "", 0, false
 	}
 	return "p" + strconv.Itoa(num), num, true
+}
+
+func lobbyResponsePayload(lobby *persona.Lobby) map[string]any {
+	gameID := ""
+	if lobby != nil {
+		gameID = lobby.GameID
+	}
+
+	response := map[string]any{
+		"gameId": gameID,
+		"lobby":  map[string]any{"1": nil, "2": nil, "3": nil, "4": nil},
+	}
+
+	if lobby == nil {
+		return response
+	}
+
+	payloadLobby := response["lobby"].(map[string]any)
+	for _, slot := range lobby.Slots {
+		entry := map[string]string{
+			"id":          slot.UserID,
+			"name":        slot.Name,
+			"personality": slot.Personality,
+		}
+		payloadLobby[strconv.Itoa(slot.Index)] = entry
+	}
+
+	return response
 }
 
 func (a *App) respondJSON(w http.ResponseWriter, status int, payload any) {

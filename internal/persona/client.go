@@ -237,6 +237,119 @@ func (c *Client) RecordVisit(ctx context.Context, userID string) error {
 	return nil
 }
 
+// ClearLobby removes the current lobby assignment for the configured game.
+func (c *Client) ClearLobby(ctx context.Context) (*Lobby, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, c.buildURL("api", "games", "lobby", c.gameName), nil)
+	if err != nil {
+		return nil, fmt.Errorf("persona: create lobby delete request: %w", err)
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("persona: lobby delete request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	rawBody, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBody))
+	if err != nil {
+		return nil, fmt.Errorf("persona: read lobby delete response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		detail := strings.TrimSpace(string(rawBody))
+		if detail == "" {
+			detail = resp.Status
+		}
+		return nil, &APIError{
+			Operation: "lobby delete request",
+			Status:    resp.StatusCode,
+			Detail:    detail,
+		}
+	}
+
+	var decoded lobbyResponse
+	if len(rawBody) > 0 {
+		if err := json.Unmarshal(rawBody, &decoded); err != nil {
+			return nil, fmt.Errorf("persona: decode lobby delete response: %w", err)
+		}
+	}
+
+	return decoded.toLobby(), nil
+}
+
+// UpdateLobby replaces lobby entries with the provided slot assignments.
+func (c *Client) UpdateLobby(ctx context.Context, slots map[int]string) (*Lobby, error) {
+	payload := lobbyUpdateRequest{
+		GameID: c.gameName,
+		Lobby: map[string]*string{
+			"1": nil,
+			"2": nil,
+			"3": nil,
+			"4": nil,
+		},
+	}
+
+	for slot, userID := range slots {
+		if slot < 1 || slot > 4 {
+			continue
+		}
+		trimmed := strings.TrimSpace(userID)
+		if trimmed == "" {
+			continue
+		}
+		value := trimmed
+		payload.Lobby[strconv.Itoa(slot)] = &value
+	}
+
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return nil, fmt.Errorf("persona: encode lobby update payload: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodPost,
+		c.buildURL("api", "games", "lobby", c.gameName),
+		bytes.NewReader(body),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("persona: create lobby update request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("persona: lobby update request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	rawBody, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBody))
+	if err != nil {
+		return nil, fmt.Errorf("persona: read lobby update response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		detail := strings.TrimSpace(string(rawBody))
+		if detail == "" {
+			detail = resp.Status
+		}
+		return nil, &APIError{
+			Operation: "lobby update request",
+			Status:    resp.StatusCode,
+			Detail:    detail,
+		}
+	}
+
+	var decoded lobbyResponse
+	if len(rawBody) > 0 {
+		if err := json.Unmarshal(rawBody, &decoded); err != nil {
+			return nil, fmt.Errorf("persona: decode lobby update response: %w", err)
+		}
+	}
+
+	return decoded.toLobby(), nil
+}
+
 // SubmitGameResult uploads the scores for a completed match to the Persona API.
 func (c *Client) SubmitGameResult(ctx context.Context, startTime time.Time, results []GameResult) (*GameResultResponse, error) {
 	if len(results) == 0 {
@@ -396,4 +509,9 @@ type gameResultSlot struct {
 type gameResultResponse struct {
 	GameID string `json:"gameId"`
 	PlayID int    `json:"playId"`
+}
+
+type lobbyUpdateRequest struct {
+	GameID string             `json:"gameId"`
+	Lobby  map[string]*string `json:"lobby"`
 }
