@@ -153,10 +153,9 @@ main {
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
-  /* 端スワイプやプルリフレッシュの誤発火を抑止 */
-  overscroll-behavior: contain;
-  /* タップ時の青いハイライトを除去（iOS系） */
-  -webkit-tap-highlight-color: transparent;
+  -webkit-tap-highlight-color: transparent; /* タップ時の青いハイライトを除去（iOS系） */
+  overscroll-behavior: contain; /* 端スワイプやプルリフレッシュの誤発火を抑止 */
+  touch-action: none; /* ダブルタップ/ピンチ/パンを任意実装に委ねる */
 }
 
 .controller[data-mode="stick"] .dpad-area {
