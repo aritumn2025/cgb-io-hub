@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"runtime/debug"
 	"strings"
 	"time"
 
@@ -46,13 +47,13 @@ func New(cfg config.Config, assets http.FileSystem, logger *slog.Logger) (*App, 
 	}, logger.With("component", "hub"))
 
 	var personaClient *persona.Client
-	if base := strings.TrimSpace(cfg.PersonaBaseURL); base != "" {
+	if base := strings.TrimSpace(cfg.DBBaseURL); base != "" {
 		client, err := persona.New(persona.Config{
 			BaseURL:    base,
-			GameName:   cfg.PersonaGameName,
-			Attraction: cfg.PersonaAttraction,
-			Staff:      cfg.PersonaStaff,
-			Timeout:    cfg.PersonaTimeout,
+			GameName:   cfg.GameID,
+			Attraction: cfg.AttractionID,
+			Staff:      cfg.StaffName,
+			Timeout:    cfg.DBAPITimeout,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("initialise persona client: %w", err)
@@ -117,4 +118,10 @@ func (a *App) Run(ctx context.Context) error {
 		}
 		return nil
 	}
+}
+
+func (a *App) logErrorWithStack(msg string, args ...any) {
+	stack := strings.TrimSpace(string(debug.Stack()))
+	fields := append(args, "stack", stack)
+	a.logger.Error(msg, fields...)
 }

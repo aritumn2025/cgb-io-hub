@@ -76,7 +76,7 @@ func (a *App) controllerSessionHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		var apiErr *persona.APIError
 		if errors.As(err, &apiErr) {
-			a.logger.Error(
+			a.logErrorWithStack(
 				"persona_lookup_failed",
 				"user_id", userID,
 				"status", apiErr.Status,
@@ -84,7 +84,7 @@ func (a *App) controllerSessionHandler(w http.ResponseWriter, r *http.Request) {
 				"err", err.Error(),
 			)
 		} else {
-			a.logger.Error("persona_lookup_failed", "user_id", userID, "err", err.Error())
+			a.logErrorWithStack("persona_lookup_failed", "user_id", userID, "err", err.Error())
 		}
 		a.respondJSON(w, http.StatusBadGateway, map[string]string{"error": "failed to verify user lobby assignment"})
 		return
@@ -98,7 +98,7 @@ func (a *App) controllerSessionHandler(w http.ResponseWriter, r *http.Request) {
 		a.cfg.SessionTokenTTL,
 	)
 	if err != nil {
-		a.logger.Error("token_issue_failed", "slot", slot.SlotID, "user_id", slot.UserID, "err", err.Error())
+		a.logErrorWithStack("token_issue_failed", "slot", slot.SlotID, "user_id", slot.UserID, "err", err.Error())
 		a.respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to issue controller token"})
 		return
 	}
@@ -121,7 +121,7 @@ func (a *App) controllerSessionHandler(w http.ResponseWriter, r *http.Request) {
 			"name":        slot.Name,
 			"personality": slot.Personality,
 		},
-		"gameId": a.cfg.PersonaGameName,
+		"gameId": a.cfg.GameID,
 	})
 }
 
@@ -237,7 +237,7 @@ func (a *App) gameStartHandler(w http.ResponseWriter, r *http.Request) {
 
 	if len(targetSlots) == 0 {
 		a.respondJSON(w, http.StatusOK, map[string]any{
-			"gameId":  a.cfg.PersonaGameName,
+			"gameId":  a.cfg.GameID,
 			"marked":  []any{},
 			"skipped": []any{},
 			"message": "no eligible players to mark",
@@ -274,7 +274,7 @@ func (a *App) gameStartHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	a.respondJSON(w, http.StatusOK, map[string]any{
-		"gameId":  a.cfg.PersonaGameName,
+		"gameId":  a.cfg.GameID,
 		"marked":  results,
 		"count":   len(results),
 		"slots":   targetSlots,
