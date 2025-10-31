@@ -61,7 +61,7 @@
           <div class="theme-toggle" id="theme-toggle">
             <button
               type="button"
-              class="theme-toggle__button"
+              class="pill-button theme-toggle__button"
               data-theme-toggle
               aria-pressed="true"
             >
@@ -71,26 +71,23 @@
                 aria-hidden="true"
                 >☾</span
               >
-              <span class="theme-toggle__text" data-theme-text
-                >ダークモード</span
-              >
+              <span class="theme-toggle__text" data-theme-text>ダークモード</span>
             </button>
           </div>
-          <div class="session-actions">
-            <button
-              type="button"
-              class="session-actions__button"
-              data-session-reset
-            >
-              IDを再入力
-            </button>
+          <button
+            type="button"
+            class="pill-button session-reset-button"
+            data-session-reset
+          >
+            接続先を変更
+          </button>
+          <div class="status-card" role="status">
+            <div class="status-user" data-user-display>ゲスト</div>
+            <div class="status-connection">
+              <span class="status-lamp" data-lamp></span>
+              <span class="status-state" data-status>未接続</span>
+            </div>
           </div>
-          <p class="status" role="status">
-            <span data-id>未割り当て</span>
-            ／ <span data-user-info>ユーザーID: ---</span>
-            ／ <span data-status>未接続</span>
-            <span class="status-lamp" data-lamp></span>
-          </p>
         </div>
       </div>
       <section class="controller" data-mode="dpad">
@@ -148,7 +145,8 @@
           ユーザーIDを入力
         </h1>
         <p class="player-picker__description">
-          Persona Go のマイページに表示されるユーザーIDを入力すると自動でプレイヤー枠に割り当てられます。
+          Persona Go
+          のマイページに表示されるユーザーIDを入力すると自動でプレイヤー枠に割り当てられます。
         </p>
         <form class="player-picker__form" data-session-form autocomplete="off">
           <label class="player-picker__label" for="session-user-id">
@@ -177,7 +175,11 @@
         <p class="player-picker__hint" id="session-form-hint">
           QR コードを読み取った場合は自動入力されます。
         </p>
-        <p class="player-picker__error" data-session-error aria-live="polite"></p>
+        <p
+          class="player-picker__error"
+          data-session-error
+          aria-live="polite"
+        ></p>
       </div>
     </section>
     <script src="controller.js" defer></script>

@@ -10,8 +10,7 @@ const INPUT_MODES = {
 document.addEventListener("DOMContentLoaded", () => {
   const statusEl = document.querySelector("[data-status]");
   const lampEl = document.querySelector("[data-lamp]");
-  const idEl = document.querySelector("[data-id]");
-  const userInfoEl = document.querySelector("[data-user-info]");
+  const userDisplayEl = document.querySelector("[data-user-display]");
   const infoMenu = document.getElementById("info-menu");
   const infoToggle = document.getElementById("info-toggle");
   const controller = document.querySelector(".controller");
@@ -28,7 +27,16 @@ document.addEventListener("DOMContentLoaded", () => {
   const themeToggle = document.querySelector("[data-theme-toggle]");
   const controlToggle = document.querySelector("[data-control-toggle]");
 
-  if (!statusEl || !lampEl || !idEl || !infoMenu || !infoToggle || !controller || !stick || !thumb || !dpad) {
+  if (
+    !statusEl ||
+    !lampEl ||
+    !infoMenu ||
+    !infoToggle ||
+    !controller ||
+    !stick ||
+    !thumb ||
+    !dpad
+  ) {
     return;
   }
 
@@ -44,7 +52,9 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   const fallbackControllerId = getControllerIdFromQuery();
-  let controllerId = activeSession ? activeSession.slotId : fallbackControllerId || null;
+  let controllerId = activeSession
+    ? activeSession.slotId
+    : fallbackControllerId || null;
   let refreshTimer = null;
 
   const connection = createConnection({
@@ -69,11 +79,9 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   const updateInfoPanel = () => {
-    if (idEl) {
-      idEl.textContent = formatDisplayId(controllerId);
-    }
-    if (userInfoEl) {
-      userInfoEl.textContent = formatUserInfo(activeSession);
+    const displaySource = activeSession || (controllerId ? { userId: controllerId } : null);
+    if (userDisplayEl) {
+      userDisplayEl.textContent = formatUserDisplay(displaySource);
     }
   };
 
@@ -86,7 +94,10 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
     const now = Date.now();
-    const targetTime = dueTime != null ? dueTime : activeSession.expiresAt - TOKEN_REFRESH_MARGIN_MS;
+    const targetTime =
+      dueTime != null
+        ? dueTime
+        : activeSession.expiresAt - TOKEN_REFRESH_MARGIN_MS;
     const delay = Math.max(targetTime - now, 1000);
     refreshTimer = window.setTimeout(async () => {
       if (!activeSession || !activeSession.userId) {
@@ -113,7 +124,11 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
     updateInfoPanel();
-    setScreenVisibility({ controllerScreen, sessionForm: sessionSection, showSessionForm: !controllerId });
+    setScreenVisibility({
+      controllerScreen,
+      sessionForm: sessionSection,
+      showSessionForm: !controllerId,
+    });
     if (session && announce) {
       status.set("接続準備中…");
     }
@@ -132,7 +147,11 @@ document.addEventListener("DOMContentLoaded", () => {
     clearStoredSession();
     updateInfoPanel();
     if (showForm) {
-      setScreenVisibility({ controllerScreen, sessionForm: sessionSection, showSessionForm: true });
+      setScreenVisibility({
+        controllerScreen,
+        sessionForm: sessionSection,
+        showSessionForm: true,
+      });
       status.set("未接続");
     }
     connection.disconnect();
@@ -161,7 +180,11 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   updateInfoPanel();
-  setScreenVisibility({ controllerScreen, sessionForm: sessionSection, showSessionForm: !controllerId });
+  setScreenVisibility({
+    controllerScreen,
+    sessionForm: sessionSection,
+    showSessionForm: !controllerId,
+  });
 
   if (activeSession) {
     applySession(activeSession, { persist: false, announce: false });
@@ -278,13 +301,14 @@ function createConnection({ getSession, getControllerId, updateStatus }) {
         reconnectTimer = null;
       }
       const session = typeof getSession === "function" ? getSession() : null;
-      const controllerId = typeof getControllerId === "function" ? getControllerId() : null;
+      const controllerId =
+        typeof getControllerId === "function" ? getControllerId() : null;
       const payload =
         session && session.token
           ? { role: "controller", token: session.token }
           : controllerId
-            ? { role: "controller", id: controllerId }
-            : null;
+          ? { role: "controller", id: controllerId }
+          : null;
 
       if (!payload) {
         updateStatus("未接続");
@@ -352,7 +376,8 @@ function createInputState(getControllerId, connection) {
   let lastSent = "";
 
   const send = (force = false) => {
-    const controllerId = typeof getControllerId === "function" ? getControllerId() : null;
+    const controllerId =
+      typeof getControllerId === "function" ? getControllerId() : null;
     if (!controllerId) {
       return;
     }
@@ -620,7 +645,11 @@ function initSessionForm({ form, input, errorEl, onSubmit }) {
   });
 }
 
-function setScreenVisibility({ controllerScreen, sessionForm, showSessionForm }) {
+function setScreenVisibility({
+  controllerScreen,
+  sessionForm,
+  showSessionForm,
+}) {
   if (controllerScreen) {
     controllerScreen.classList.toggle("is-hidden", Boolean(showSessionForm));
   }
@@ -639,33 +668,6 @@ function getControllerIdFromQuery() {
     return null;
   }
   return id;
-}
-
-function formatDisplayId(id) {
-  if (!id) {
-    return "未割り当て";
-  }
-  if (id.startsWith("p")) {
-    const suffix = id.slice(1);
-    return suffix ? `プレイヤー${toFullWidth(suffix)}` : "プレイヤー";
-  }
-  return toFullWidth(id);
-}
-
-function toFullWidth(str) {
-  return str.replace(/[0-9a-z]/gi, (char) => {
-    const code = char.charCodeAt(0);
-    if (code >= 0x30 && code <= 0x39) {
-      return String.fromCharCode(0xff10 + (code - 0x30));
-    }
-    if (code >= 0x41 && code <= 0x5a) {
-      return String.fromCharCode(0xff21 + (code - 0x41));
-    }
-    if (code >= 0x61 && code <= 0x7a) {
-      return String.fromCharCode(0xff41 + (code - 0x61));
-    }
-    return char;
-  });
 }
 
 function clamp(value) {
@@ -700,20 +702,27 @@ async function requestControllerSession(userId) {
 }
 
 function normalizeSessionResponse(data, fallbackUserId) {
-  const slotId = typeof data.slotId === "string" ? data.slotId.toLowerCase() : "";
+  const slotId =
+    typeof data.slotId === "string" ? data.slotId.toLowerCase() : "";
   const token = typeof data.token === "string" ? data.token : "";
   const user = data && typeof data.user === "object" ? data.user : {};
-  const rawUserId = typeof user.id === "string" && user.id.trim() ? user.id.trim() : fallbackUserId;
+  const rawUserId =
+    typeof user.id === "string" && user.id.trim()
+      ? user.id.trim()
+      : fallbackUserId;
   const userId = rawUserId || "";
   const userName = typeof user.name === "string" ? user.name.trim() : "";
-  const personality = typeof user.personality === "string" ? user.personality.trim() : "";
+  const personality =
+    typeof user.personality === "string" ? user.personality.trim() : "";
 
   if (!slotId || !isValidPlayerId(slotId) || !token) {
     throw new Error("セッション情報が不完全です");
   }
 
-  const ttlSecondsRaw = typeof data.ttl === "number" ? data.ttl : Number.parseFloat(data.ttl);
-  const ttlSeconds = Number.isFinite(ttlSecondsRaw) && ttlSecondsRaw > 0 ? ttlSecondsRaw : 60;
+  const ttlSecondsRaw =
+    typeof data.ttl === "number" ? data.ttl : Number.parseFloat(data.ttl);
+  const ttlSeconds =
+    Number.isFinite(ttlSecondsRaw) && ttlSecondsRaw > 0 ? ttlSecondsRaw : 60;
   const ttlMs = ttlSeconds * 1000;
 
   let expiresAt = Date.now() + ttlMs;
@@ -744,7 +753,11 @@ function readStoredSession() {
       return null;
     }
     const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed.slotId !== "string" || typeof parsed.token !== "string") {
+    if (
+      !parsed ||
+      typeof parsed.slotId !== "string" ||
+      typeof parsed.token !== "string"
+    ) {
       return null;
     }
     return parsed;
@@ -787,14 +800,24 @@ function isSessionExpired(session) {
   return session.expiresAt <= Date.now();
 }
 
-function formatUserInfo(session) {
-  if (!session || !session.userId) {
-    return "ユーザーID: ---";
+function formatUserDisplay(session) {
+  if (!session) {
+    return "ゲスト";
   }
-  if (session.userName) {
-    return `ユーザー: ${session.userName} ／ ID: ${session.userId}`;
+  const rawName =
+    session && typeof session.userName === "string" ? session.userName.trim() : "";
+  const rawId =
+    session && typeof session.userId === "string" ? session.userId.trim() : "";
+  if (rawName && rawId) {
+    return `${rawName} (${rawId})`;
   }
-  return `ユーザーID: ${session.userId}`;
+  if (rawName) {
+    return rawName;
+  }
+  if (rawId) {
+    return `ID: ${rawId}`;
+  }
+  return "ゲスト";
 }
 
 function initControlMode({
@@ -817,13 +840,13 @@ function initControlMode({
     if (stickElement) {
       stickElement.setAttribute(
         "aria-hidden",
-        normalized === INPUT_MODES.DPAD ? "true" : "false",
+        normalized === INPUT_MODES.DPAD ? "true" : "false"
       );
     }
     if (dpadElement) {
       dpadElement.setAttribute(
         "aria-hidden",
-        normalized === INPUT_MODES.DPAD ? "false" : "true",
+        normalized === INPUT_MODES.DPAD ? "false" : "true"
       );
     }
 
@@ -832,7 +855,9 @@ function initControlMode({
       const nextLabel = isDpad ? "スティックに切り替え" : "十字キーに切り替え";
       toggleButton.textContent = nextLabel;
       toggleButton.setAttribute("aria-pressed", isDpad ? "true" : "false");
-      const ariaLabel = isDpad ? "スティック操作に切り替え" : "十字キー操作に切り替え";
+      const ariaLabel = isDpad
+        ? "スティック操作に切り替え"
+        : "十字キー操作に切り替え";
       toggleButton.setAttribute("aria-label", ariaLabel);
       toggleButton.setAttribute("title", ariaLabel);
     }
@@ -860,7 +885,8 @@ function initControlMode({
 
   if (toggleButton) {
     toggleButton.addEventListener("click", () => {
-      currentMode = currentMode === INPUT_MODES.DPAD ? INPUT_MODES.STICK : INPUT_MODES.DPAD;
+      currentMode =
+        currentMode === INPUT_MODES.DPAD ? INPUT_MODES.STICK : INPUT_MODES.DPAD;
       applyMode(currentMode, { persist: true });
     });
   }
@@ -884,7 +910,10 @@ function readStoredInputMode() {
 
 function persistInputMode(mode) {
   try {
-    window.localStorage.setItem(INPUT_MODE_STORAGE_KEY, normalizeInputMode(mode));
+    window.localStorage.setItem(
+      INPUT_MODE_STORAGE_KEY,
+      normalizeInputMode(mode)
+    );
   } catch (_) {
     // ignore storage write issues
   }
@@ -934,11 +963,21 @@ function applyTheme(theme, toggleButton) {
     icon.textContent = targetTheme === "light" ? "☀" : "☾";
   }
   if (text) {
-    text.textContent = targetTheme === "light" ? "ライトモード" : "ダークモード";
+    text.textContent =
+      targetTheme === "light" ? "ライトモード" : "ダークモード";
   }
-  toggleButton.setAttribute("aria-label", `${targetTheme === "light" ? "ライトモード" : "ダークモード"}で表示`);
-  toggleButton.setAttribute("title", `${targetTheme === "light" ? "ライトモード" : "ダークモード"}に切り替え`);
-  toggleButton.setAttribute("aria-pressed", normalized === "light" ? "true" : "false");
+  toggleButton.setAttribute(
+    "aria-label",
+    `${targetTheme === "light" ? "ライトモード" : "ダークモード"}で表示`
+  );
+  toggleButton.setAttribute(
+    "title",
+    `${targetTheme === "light" ? "ライトモード" : "ダークモード"}に切り替え`
+  );
+  toggleButton.setAttribute(
+    "aria-pressed",
+    normalized === "light" ? "true" : "false"
+  );
   toggleButton.dataset.targetTheme = targetTheme;
 }
 
