@@ -52,6 +52,24 @@ type Slot struct {
 // ErrUserNotFound indicates that the requested user did not appear in the lobby.
 var ErrUserNotFound = errors.New("persona: user not found in lobby")
 
+// APIError provides access to Persona API error payloads.
+type APIError struct {
+	Operation string
+	Status    int
+	Detail    string
+}
+
+func (e *APIError) Error() string {
+	op := strings.TrimSpace(e.Operation)
+	if op == "" {
+		op = "persona API call"
+	}
+	if e.Status > 0 {
+		return fmt.Sprintf("persona: %s failed (status %d): %s", op, e.Status, e.Detail)
+	}
+	return fmt.Sprintf("persona: %s failed: %s", op, e.Detail)
+}
+
 // New constructs a PersonaGo API client from the provided configuration.
 func New(cfg Config) (*Client, error) {
 	base := strings.TrimSpace(cfg.BaseURL)
@@ -122,7 +140,11 @@ func (c *Client) FetchLobby(ctx context.Context) (*Lobby, error) {
 		if detail == "" {
 			detail = resp.Status
 		}
-		return nil, fmt.Errorf("persona: lobby request failed: %s", detail)
+		return nil, &APIError{
+			Operation: "lobby request",
+			Status:    resp.StatusCode,
+			Detail:    detail,
+		}
 	}
 
 	var decoded lobbyResponse
@@ -190,7 +212,11 @@ func (c *Client) RecordVisit(ctx context.Context, userID string) error {
 		if detail == "" {
 			detail = resp.Status
 		}
-		return fmt.Errorf("persona: visit request failed: %s", detail)
+		return &APIError{
+			Operation: "visit request",
+			Status:    resp.StatusCode,
+			Detail:    detail,
+		}
 	}
 
 	return nil

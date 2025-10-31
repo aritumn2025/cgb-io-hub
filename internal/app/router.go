@@ -74,7 +74,18 @@ func (a *App) controllerSessionHandler(w http.ResponseWriter, r *http.Request) {
 			a.respondJSON(w, http.StatusNotFound, map[string]string{"error": "user not present in lobby"})
 			return
 		}
-		a.logger.Error("persona_lookup_failed", "user_id", userID, "err", err.Error())
+		var apiErr *persona.APIError
+		if errors.As(err, &apiErr) {
+			a.logger.Error(
+				"persona_lookup_failed",
+				"user_id", userID,
+				"status", apiErr.Status,
+				"detail", apiErr.Detail,
+				"err", err.Error(),
+			)
+		} else {
+			a.logger.Error("persona_lookup_failed", "user_id", userID, "err", err.Error())
+		}
 		a.respondJSON(w, http.StatusBadGateway, map[string]string{"error": "failed to verify user lobby assignment"})
 		return
 	}
