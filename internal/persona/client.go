@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -47,6 +48,20 @@ type Slot struct {
 	UserID      string
 	Name        string
 	Personality string
+}
+
+// GameResult holds the score achieved by a player for a finished game.
+type GameResult struct {
+	Slot   int
+	UserID string
+	Name   string
+	Score  int
+}
+
+// GameResultResponse describes the Persona API reply after submitting results.
+type GameResultResponse struct {
+	GameID string
+	PlayID int
 }
 
 // ErrUserNotFound indicates that the requested user did not appear in the lobby.
@@ -222,6 +237,96 @@ func (c *Client) RecordVisit(ctx context.Context, userID string) error {
 	return nil
 }
 
+// SubmitGameResult uploads the scores for a completed match to the Persona API.
+func (c *Client) SubmitGameResult(ctx context.Context, startTime time.Time, results []GameResult) (*GameResultResponse, error) {
+	if len(results) == 0 {
+		return nil, errors.New("persona: at least one game result required")
+	}
+
+	payload := gameResultRequest{
+		Results: map[string]*gameResultSlot{
+			"1": nil,
+			"2": nil,
+			"3": nil,
+			"4": nil,
+		},
+	}
+
+	if !startTime.IsZero() {
+		payload.StartTime = startTime.UTC().Format(time.RFC3339)
+	}
+
+	seenSlots := make(map[int]struct{}, len(results))
+	for _, res := range results {
+		if res.Slot < 1 || res.Slot > 4 {
+			return nil, fmt.Errorf("persona: invalid slot %d", res.Slot)
+		}
+		if res.UserID == "" {
+			return nil, fmt.Errorf("persona: user id required for slot %d", res.Slot)
+		}
+		if _, exists := seenSlots[res.Slot]; exists {
+			return nil, fmt.Errorf("persona: duplicate slot %d", res.Slot)
+		}
+		seenSlots[res.Slot] = struct{}{}
+		payload.Results[strconv.Itoa(res.Slot)] = &gameResultSlot{
+			UserID: res.UserID,
+			Name:   res.Name,
+			Score:  res.Score,
+		}
+	}
+
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return nil, fmt.Errorf("persona: encode game result payload: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodPost,
+		c.buildURL("api", "games", "result", c.gameName),
+		bytes.NewReader(body),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("persona: create game result request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("persona: game result request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	rawBody, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBody))
+	if err != nil {
+		return nil, fmt.Errorf("persona: read game result response: %w", err)
+	}
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		detail := strings.TrimSpace(string(rawBody))
+		if detail == "" {
+			detail = resp.Status
+		}
+		return nil, &APIError{
+			Operation: "game result request",
+			Status:    resp.StatusCode,
+			Detail:    detail,
+		}
+	}
+
+	var decoded gameResultResponse
+	if len(rawBody) > 0 {
+		if err := json.Unmarshal(rawBody, &decoded); err != nil {
+			return nil, fmt.Errorf("persona: decode game result response: %w", err)
+		}
+	}
+
+	return &GameResultResponse{
+		GameID: decoded.GameID,
+		PlayID: decoded.PlayID,
+	}, nil
+}
+
 func (c *Client) buildURL(segments ...string) string {
 	base := c.baseURL
 	escaped := make([]string, 0, len(segments))
@@ -275,4 +380,20 @@ func (resp lobbyResponse) toLobby() *Lobby {
 		GameID: resp.GameID,
 		Slots:  slots,
 	}
+}
+
+type gameResultRequest struct {
+	StartTime string                     `json:"startTime,omitempty"`
+	Results   map[string]*gameResultSlot `json:"results"`
+}
+
+type gameResultSlot struct {
+	UserID string `json:"id"`
+	Name   string `json:"name"`
+	Score  int    `json:"score"`
+}
+
+type gameResultResponse struct {
+	GameID string `json:"gameId"`
+	PlayID int    `json:"playId"`
 }

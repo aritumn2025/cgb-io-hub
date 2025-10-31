@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -23,6 +24,7 @@ func (a *App) buildRouter(assets http.FileSystem) http.Handler {
 	mux.HandleFunc("/api/controller/session", a.controllerSessionHandler)
 	mux.HandleFunc("/api/controller/assignments", a.controllerAssignmentsHandler)
 	mux.HandleFunc("/api/game/start", a.gameStartHandler)
+	mux.HandleFunc("/api/game/result", a.gameResultHandler)
 	mux.Handle("/", http.FileServer(assets))
 	return mux
 }
@@ -280,6 +282,167 @@ func (a *App) gameStartHandler(w http.ResponseWriter, r *http.Request) {
 		"slots":   targetSlots,
 		"skipped": skipped,
 	})
+}
+
+func (a *App) gameResultHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", http.MethodPost)
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	if a.persona == nil {
+		a.respondJSON(w, http.StatusServiceUnavailable, map[string]string{
+			"error": "persona integration disabled",
+		})
+		return
+	}
+
+	if r.Body == nil {
+		a.respondJSON(w, http.StatusBadRequest, map[string]string{"error": "request body required"})
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+	defer r.Body.Close()
+
+	var req struct {
+		StartTime string `json:"startTime"`
+		Results   []struct {
+			SlotID string `json:"slotId"`
+			Score  int    `json:"score"`
+			Name   string `json:"name"`
+		} `json:"results"`
+	}
+
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&req); err != nil {
+		if errors.Is(err, io.EOF) {
+			a.respondJSON(w, http.StatusBadRequest, map[string]string{"error": "request body required"})
+			return
+		}
+		a.respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid JSON payload"})
+		return
+	}
+	if err := decoder.Decode(new(struct{})); err != io.EOF {
+		a.respondJSON(w, http.StatusBadRequest, map[string]string{"error": "unexpected trailing content"})
+		return
+	}
+
+	if len(req.Results) == 0 {
+		a.respondJSON(w, http.StatusBadRequest, map[string]string{"error": "results array required"})
+		return
+	}
+
+	assignments := a.hub.ControllerAssignments()
+	index := make(map[string]hub.ControllerAssignment, len(assignments))
+	for _, rec := range assignments {
+		slot := strings.ToLower(strings.TrimSpace(rec.SlotID))
+		if slot == "" {
+			continue
+		}
+		index[slot] = rec
+	}
+
+	submissions := make([]persona.GameResult, 0, len(req.Results))
+	seen := make(map[int]string, len(req.Results))
+
+	for _, entry := range req.Results {
+		slotRaw := strings.TrimSpace(entry.SlotID)
+		if slotRaw == "" {
+			a.respondJSON(w, http.StatusBadRequest, map[string]string{"error": "slotId is required"})
+			return
+		}
+
+		slotKey, slotNum, ok := normalizeSlotID(slotRaw)
+		if !ok {
+			a.respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid slotId: " + slotRaw})
+			return
+		}
+		if _, exists := seen[slotNum]; exists {
+			a.respondJSON(w, http.StatusBadRequest, map[string]string{"error": "duplicate slotId: " + slotKey})
+			return
+		}
+		seen[slotNum] = slotKey
+
+		assign, ok := index[slotKey]
+		if !ok || strings.TrimSpace(assign.UserID) == "" {
+			a.respondJSON(w, http.StatusNotFound, map[string]string{"error": "slot not assigned to user: " + slotKey})
+			return
+		}
+
+		if entry.Score < 0 {
+			a.respondJSON(w, http.StatusBadRequest, map[string]string{"error": "score must be non-negative"})
+			return
+		}
+
+		name := strings.TrimSpace(entry.Name)
+		if name == "" {
+			name = strings.TrimSpace(assign.Name)
+		}
+
+		submissions = append(submissions, persona.GameResult{
+			Slot:   slotNum,
+			UserID: assign.UserID,
+			Name:   name,
+			Score:  entry.Score,
+		})
+	}
+
+	if len(submissions) == 0 {
+		a.respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no valid results provided"})
+		return
+	}
+
+	startTime := time.Now().UTC()
+	if raw := strings.TrimSpace(req.StartTime); raw != "" {
+		parsed, err := time.Parse(time.RFC3339, raw)
+		if err != nil {
+			a.respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid startTime"})
+			return
+		}
+		startTime = parsed
+	}
+
+	resp, err := a.persona.SubmitGameResult(r.Context(), startTime, submissions)
+	if err != nil {
+		var apiErr *persona.APIError
+		if errors.As(err, &apiErr) {
+			a.logErrorWithStack(
+				"persona_result_failed",
+				"status", apiErr.Status,
+				"detail", apiErr.Detail,
+				"err", err.Error(),
+			)
+		} else {
+			a.logErrorWithStack("persona_result_failed", "err", err.Error())
+		}
+		a.respondJSON(w, http.StatusBadGateway, map[string]string{"error": "failed to submit game results"})
+		return
+	}
+
+	a.respondJSON(w, http.StatusOK, map[string]any{
+		"gameId":    resp.GameID,
+		"playId":    resp.PlayID,
+		"submitted": len(submissions),
+		"startTime": startTime.UTC().Format(time.RFC3339),
+	})
+}
+
+func normalizeSlotID(raw string) (string, int, bool) {
+	slot := strings.ToLower(strings.TrimSpace(raw))
+	if slot == "" {
+		return "", 0, false
+	}
+	if strings.HasPrefix(slot, "p") {
+		slot = strings.TrimPrefix(slot, "p")
+	}
+	num, err := strconv.Atoi(slot)
+	if err != nil || num < 1 || num > 4 {
+		return "", 0, false
+	}
+	return "p" + strconv.Itoa(num), num, true
 }
 
 func (a *App) respondJSON(w http.ResponseWriter, status int, payload any) {
