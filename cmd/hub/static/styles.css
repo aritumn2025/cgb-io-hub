@@ -108,7 +108,6 @@ main {
   padding: 32px 24px calc(72px + env(safe-area-inset-bottom));
   box-sizing: border-box;
   position: relative;
-  padding: 32px 24px calc(72px + env(safe-area-inset-bottom));
 }
 
 .status-card {
@@ -428,8 +427,8 @@ button.active {
 
 .info-menu {
   position: fixed;
-  top: 12px;
-  right: 12px;
+  top: calc(12px + env(safe-area-inset-top));
+  right: calc(12px + env(safe-area-inset-right));
   display: flex;
   flex-direction: column;
   align-items: flex-end;
