@@ -14,6 +14,21 @@ document.addEventListener("DOMContentLoaded", () => {
   const infoMenu = document.getElementById("info-menu");
   const infoToggle = document.getElementById("info-toggle");
   const controller = document.querySelector(".controller");
+  // iOS古め向け: ダブルタップズーム抑止フォールバック
+  if (controller) {
+    let lastTouchEnd = 0;
+    controller.addEventListener(
+      "touchend",
+      (e) => {
+        const now = Date.now();
+        if (now - lastTouchEnd <= 300) {
+          e.preventDefault();
+        }
+        lastTouchEnd = now;
+      },
+      { passive: false }
+    );
+  }
   const stick = document.getElementById("stick");
   const thumb = document.getElementById("stick-thumb");
   const dpad = document.getElementById("dpad");
@@ -79,7 +94,8 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   const updateInfoPanel = () => {
-    const displaySource = activeSession || (controllerId ? { userId: controllerId } : null);
+    const displaySource =
+      activeSession || (controllerId ? { userId: controllerId } : null);
     if (userDisplayEl) {
       userDisplayEl.textContent = formatUserDisplay(displaySource);
     }
@@ -805,7 +821,9 @@ function formatUserDisplay(session) {
     return "ゲスト";
   }
   const rawName =
-    session && typeof session.userName === "string" ? session.userName.trim() : "";
+    session && typeof session.userName === "string"
+      ? session.userName.trim()
+      : "";
   const rawId =
     session && typeof session.userId === "string" ? session.userId.trim() : "";
   if (rawName && rawId) {
