@@ -62,3 +62,9 @@ curl https://db.rayfiyo.com/api/games/lobby/shooting
     }
   }
   ```
+
+## ランキング
+
+```bash
+curl https://db.rayfiyo.com/api/games/result/summary/shooting?limit=
+```
