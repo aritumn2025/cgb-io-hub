@@ -591,6 +591,10 @@ function initButtons(buttons, state) {
       button.setPointerCapture(event.pointerId);
       state.btn[key] = true;
       button.classList.add("active");
+      // 触覚フィードバック（対応端末のみ）
+      if (navigator && typeof navigator.vibrate === "function") {
+        navigator.vibrate(10);
+      }
       state.send();
     });
 
