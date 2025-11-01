@@ -34,7 +34,20 @@ func (a *App) buildRouter(assets http.FileSystem) http.Handler {
 	mux.Handle("/staff", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		serveAssetFile(w, r, assets, "staff/index.html")
 	}))
-	mux.Handle("/", http.FileServer(assets))
+	staticHandler := http.FileServer(assets)
+	mux.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path := r.URL.Path
+		if path == "" || path == "/" {
+			serveAssetFile(w, r, assets, "index.html")
+			return
+		}
+		if path == "/index.html" {
+			// Avoid duplicate content path; serve main entry point.
+			serveAssetFile(w, r, assets, "index.html")
+			return
+		}
+		staticHandler.ServeHTTP(w, r)
+	}))
 	return mux
 }
 
