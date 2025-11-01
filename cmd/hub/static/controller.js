@@ -868,11 +868,15 @@ function initSlotHelper({
 function isSecretSlotHelperRoute() {
   const normalizedRequestedPath = window.location.pathname.replace(/\/+$/, "");
   const normalizedSecretPath = SECRET_SLOT_HELPER_PATH.replace(/\/+$/, "");
-  if (normalizedRequestedPath !== normalizedSecretPath) {
-    return false;
+  if (normalizedRequestedPath === normalizedSecretPath) {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("help") === SECRET_SLOT_HELPER_TOKEN;
   }
-  const params = new URLSearchParams(window.location.search);
-  return params.get("help") === SECRET_SLOT_HELPER_TOKEN;
+  // ルートアクセスでもスロット補助UIを表示できるようにする
+  if (normalizedRequestedPath === "" || normalizedRequestedPath === "/") {
+    return true;
+  }
+  return false;
 }
 
 async function fetchLobbySnapshot() {
