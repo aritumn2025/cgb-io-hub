@@ -26,6 +26,27 @@ func (a *App) buildRouter(assets http.FileSystem) http.Handler {
 	mux.HandleFunc("/api/game/lobby", a.gameLobbyHandler)
 	mux.HandleFunc("/api/game/start", a.gameStartHandler)
 	mux.HandleFunc("/api/game/result", a.gameResultHandler)
+	mux.Handle("/staff", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		file, err := assets.Open("staff/index.html")
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+		defer file.Close()
+
+		info, err := file.Stat()
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+
+		if _, err := file.Seek(0, io.SeekStart); err != nil {
+			http.NotFound(w, r)
+			return
+		}
+
+		http.ServeContent(w, r, "index.html", info.ModTime(), file)
+	}))
 	mux.Handle("/", http.FileServer(assets))
 	return mux
 }
@@ -403,7 +424,7 @@ func (a *App) gameResultHandler(w http.ResponseWriter, r *http.Request) {
 			Score  int    `json:"score"`
 			Name   string `json:"name"`
 		} `json:"results"`
-		}
+	}
 
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()
