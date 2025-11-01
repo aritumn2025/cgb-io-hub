@@ -518,20 +518,26 @@ function initDpad(dpad, state) {
   const pointerTargets = new Map();
   const activeDirections = new Set();
 
+  // ハンバーガーメニューが左上に鳴るように横持ちした場合を想定
+  // フロントは縦持ちで設計しているので、ラベルとx,yの値が 90度ずれる
   const updateAxes = () => {
     let x = 0;
     let y = 0;
     if (activeDirections.has("left")) {
-      x -= 1;
+      // x -= 1;
+      y -= 1;
     }
     if (activeDirections.has("right")) {
-      x += 1;
-    }
-    if (activeDirections.has("up")) {
+      // x += 1;
       y += 1;
     }
+    if (activeDirections.has("up")) {
+      // y += 1;
+      x -= 1;
+    }
     if (activeDirections.has("down")) {
-      y -= 1;
+      // y -= 1;
+      x += 1;
     }
     state.axes.x = clamp(x);
     state.axes.y = clamp(y);
@@ -722,7 +728,9 @@ function initSlotHelper({
   let selectedSlot = "";
 
   buttons.forEach((button) => {
-    const slotId = (button.getAttribute("data-slot-button") || "").toLowerCase();
+    const slotId = (
+      button.getAttribute("data-slot-button") || ""
+    ).toLowerCase();
     if (!isValidPlayerId(slotId)) {
       return;
     }
@@ -780,15 +788,11 @@ function initSlotHelper({
       entry.button.classList.toggle("is-selected", shouldSelect);
 
       if (entry.nameEl) {
-        const displayName = hasUser
-          ? info.name || info.userId
-          : "空席";
+        const displayName = hasUser ? info.name || info.userId : "空席";
         entry.nameEl.textContent = displayName;
       }
       if (entry.idEl) {
-        entry.idEl.textContent = hasUser
-          ? `ID: ${info.userId}`
-          : "ID: -";
+        entry.idEl.textContent = hasUser ? `ID: ${info.userId}` : "ID: -";
       }
 
       if (!hasUser && selectedSlot === entry.slotId) {
