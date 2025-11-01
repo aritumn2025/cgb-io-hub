@@ -4,7 +4,7 @@ on:
   push:
     branches:
       # ブランチを変える時は次を変更
-      - develop
+      - main
 
 jobs:
   deploy:
@@ -13,7 +13,7 @@ jobs:
     env:
       DEPLOY_PATH: /srv/cgb-io-hub
       # ブランチを変える時は次を変更
-      REFERENCE_BRANCH: develop
+      REFERENCE_BRANCH: main
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
