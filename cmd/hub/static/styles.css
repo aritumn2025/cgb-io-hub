@@ -371,13 +371,6 @@ button.active {
   display: none;
 }
 
-.player-picker__slot-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
 .player-picker__slot-title {
   margin: 0;
   font-size: 1.1rem;
@@ -401,9 +394,8 @@ button.active {
 }
 
 .player-picker__slot-note {
-  margin: 0;
   font-size: 0.9rem;
-  opacity: 0.8;
+  text-align: center;
 }
 
 .player-picker__slot-grid {
@@ -736,6 +728,7 @@ button.active {
 .primary-action {
   width: min(100%, var(--control-size));
   max-width: var(--control-size);
+  transform: rotate(90deg);
   aspect-ratio: 1 / 1;
   border-radius: 50%;
   padding: 0;

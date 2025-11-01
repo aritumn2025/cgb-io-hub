@@ -146,29 +146,12 @@
       aria-labelledby="session-form-title"
     >
       <div class="player-picker__content">
-        <h1 class="player-picker__title" id="session-form-title">
-          オンライン コントローラー
-        </h1>
+        <h1 class="player-picker__title" id="session-form-title">接続設定</h1>
         <section
           class="player-picker__slot-helper is-hidden"
           data-slot-helper
           aria-labelledby="slot-helper-title"
         >
-          <div class="player-picker__slot-header">
-            <h2 class="player-picker__slot-title" id="slot-helper-title">
-              接続先を選択
-            </h2>
-            <button
-              type="button"
-              class="player-picker__slot-refresh"
-              data-slot-refresh
-            >
-              再読み込み
-            </button>
-          </div>
-          <p class="player-picker__slot-note" data-slot-note>
-            ロビーの情報を読み込んでいます…
-          </p>
           <div class="player-picker__slot-grid" data-slot-grid>
             <button
               type="button"
@@ -219,6 +202,16 @@
               <span class="player-picker__slot-id" data-slot-id="p4">-</span>
             </button>
           </div>
+          <p class="player-picker__slot-note" data-slot-note>
+            ロビーの情報を読み込んでいます…
+          </p>
+          <button
+            type="button"
+            class="player-picker__slot-refresh"
+            data-slot-refresh
+          >
+            再読み込み
+          </button>
         </section>
         <form class="player-picker__form" data-session-form autocomplete="off">
           <label class="player-picker__label" for="session-user-id">
