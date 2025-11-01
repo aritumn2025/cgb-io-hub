@@ -352,6 +352,107 @@ button.active {
   font-size: 1rem;
 }
 
+.player-picker__slot-helper {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px 16px;
+  border-radius: 16px;
+  border: 1px dashed var(--color-border);
+  background: var(--color-surface);
+  text-align: left;
+}
+
+.player-picker__slot-helper.is-hidden {
+  display: none;
+}
+
+.player-picker__slot-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.player-picker__slot-title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.player-picker__slot-refresh {
+  border: none;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 0.9rem;
+  background: var(--color-button-bg);
+  color: inherit;
+  cursor: pointer;
+  transition: background 120ms ease, transform 80ms ease;
+}
+
+.player-picker__slot-refresh:active {
+  background: var(--color-button-active-bg);
+  transform: scale(0.97);
+}
+
+.player-picker__slot-note {
+  margin: 0;
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
+
+.player-picker__slot-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.player-picker__slot-button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid var(--color-border);
+  background: var(--color-button-bg);
+  color: inherit;
+  cursor: pointer;
+  transition: background 120ms ease, transform 80ms ease, border-color 120ms ease;
+}
+
+.player-picker__slot-button:active {
+  background: var(--color-button-active-bg);
+  transform: scale(0.98);
+}
+
+.player-picker__slot-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.player-picker__slot-button.is-selected {
+  border-color: rgba(88, 156, 255, 0.65);
+  box-shadow: 0 0 0 2px rgba(88, 156, 255, 0.2);
+}
+
+.player-picker__slot-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+.player-picker__slot-name {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.player-picker__slot-id {
+  font-size: 0.85rem;
+  opacity: 0.72;
+}
+
 .player-picker__buttons {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

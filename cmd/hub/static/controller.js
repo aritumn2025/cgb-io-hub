@@ -7,6 +7,8 @@ const INPUT_MODES = {
   DPAD: "dpad",
 };
 const DEADZONE = 0.22; // 中央の遊び（ここでは ±0.22 を 0 扱い）
+const SECRET_SLOT_HELPER_PATH = "/9e07842f171c5f485383ba7f47f7fff9234345b5";
+const SECRET_SLOT_HELPER_TOKEN = "111525";
 
 document.addEventListener("DOMContentLoaded", () => {
   const statusEl = document.querySelector("[data-status]");
@@ -42,6 +44,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const resetButton = document.querySelector("[data-session-reset]");
   const themeToggle = document.querySelector("[data-theme-toggle]");
   const controlToggle = document.querySelector("[data-control-toggle]");
+  const slotHelperContainer = document.querySelector("[data-slot-helper]");
+  const slotHelperNote = document.querySelector("[data-slot-note]");
+  const slotHelperRefresh = document.querySelector("[data-slot-refresh]");
 
   if (
     !statusEl ||
@@ -92,6 +97,14 @@ document.addEventListener("DOMContentLoaded", () => {
     dpadElement: dpad,
     stickControls,
     dpadControls,
+  });
+
+  initSlotHelper({
+    container: slotHelperContainer,
+    note: slotHelperNote,
+    refreshButton: slotHelperRefresh,
+    sessionInput,
+    sessionError,
   });
 
   const updateInfoPanel = () => {
@@ -689,6 +702,233 @@ function setScreenVisibility({
   if (sessionForm) {
     sessionForm.classList.toggle("is-hidden", !showSessionForm);
   }
+}
+
+function initSlotHelper({
+  container,
+  note,
+  refreshButton,
+  sessionInput,
+  sessionError,
+}) {
+  if (!container || !isSecretSlotHelperRoute()) {
+    return null;
+  }
+
+  container.classList.remove("is-hidden");
+
+  const entries = new Map();
+  const buttons = Array.from(container.querySelectorAll("[data-slot-button]"));
+  let selectedSlot = "";
+
+  buttons.forEach((button) => {
+    const slotId = (button.getAttribute("data-slot-button") || "").toLowerCase();
+    if (!isValidPlayerId(slotId)) {
+      return;
+    }
+    const entry = {
+      slotId,
+      button,
+      nameEl: container.querySelector(`[data-slot-name='${slotId}']`),
+      idEl: container.querySelector(`[data-slot-id='${slotId}']`),
+      userId: "",
+    };
+    entries.set(slotId, entry);
+
+    button.addEventListener("click", () => {
+      if (!entry.userId) {
+        return;
+      }
+      selectedSlot = slotId;
+      entries.forEach((candidate) => {
+        const active =
+          candidate.slotId === selectedSlot && Boolean(candidate.userId);
+        candidate.button.classList.toggle("is-selected", active);
+      });
+      if (sessionInput) {
+        sessionInput.value = entry.userId;
+        sessionInput.focus();
+        try {
+          sessionInput.setSelectionRange(0, sessionInput.value.length);
+        } catch (_) {
+          // selection range not supported
+        }
+      }
+      if (sessionError) {
+        sessionError.textContent = "";
+      }
+    });
+  });
+
+  if (entries.size === 0) {
+    container.classList.add("is-hidden");
+    return null;
+  }
+
+  let isLoading = false;
+
+  const applySnapshot = (snapshot) => {
+    let anyAssigned = false;
+    entries.forEach((entry) => {
+      const info = snapshot.slots.get(entry.slotId) || null;
+      const hasUser =
+        info && typeof info.userId === "string" && info.userId !== "";
+      const previousUserId = entry.userId;
+      entry.userId = hasUser ? info.userId : "";
+      entry.button.disabled = !hasUser;
+      const shouldSelect = hasUser && entry.slotId === selectedSlot;
+      entry.button.classList.toggle("is-selected", shouldSelect);
+
+      if (entry.nameEl) {
+        const displayName = hasUser
+          ? info.name || info.userId
+          : "空席";
+        entry.nameEl.textContent = displayName;
+      }
+      if (entry.idEl) {
+        entry.idEl.textContent = hasUser
+          ? `ID: ${info.userId}`
+          : "ID: -";
+      }
+
+      if (!hasUser && selectedSlot === entry.slotId) {
+        selectedSlot = "";
+        if (sessionInput && sessionInput.value === previousUserId) {
+          sessionInput.value = "";
+        }
+      }
+      if (hasUser) {
+        anyAssigned = true;
+        if (sessionInput && shouldSelect) {
+          sessionInput.value = entry.userId;
+        }
+      }
+    });
+    return anyAssigned;
+  };
+
+  const refresh = async () => {
+    if (isLoading) {
+      return;
+    }
+    isLoading = true;
+    if (note) {
+      note.textContent = "ロビーの情報を読み込んでいます…";
+    }
+    if (refreshButton) {
+      refreshButton.disabled = true;
+    }
+
+    try {
+      const snapshot = await fetchLobbySnapshot();
+      const hasAny = applySnapshot(snapshot);
+      if (note) {
+        note.textContent = hasAny
+          ? "接続したいプレイヤーを選んでください。"
+          : "現在接続中のプレイヤーはいません。";
+      }
+    } catch (error) {
+      if (note) {
+        const message =
+          error && typeof error.message === "string" && error.message.trim()
+            ? error.message.trim()
+            : "ロビー情報の取得に失敗しました";
+        note.textContent = message;
+      }
+      console.error("[controller] lobby snapshot request failed:", error);
+    } finally {
+      isLoading = false;
+      if (refreshButton) {
+        refreshButton.disabled = false;
+      }
+    }
+  };
+
+  refresh();
+  const intervalId = window.setInterval(refresh, 15000);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      refresh();
+    }
+  });
+  if (refreshButton) {
+    refreshButton.addEventListener("click", () => {
+      refresh();
+    });
+  }
+
+  return {
+    refresh,
+    destroy() {
+      window.clearInterval(intervalId);
+    },
+  };
+}
+
+function isSecretSlotHelperRoute() {
+  const normalizedRequestedPath = window.location.pathname.replace(/\/+$/, "");
+  const normalizedSecretPath = SECRET_SLOT_HELPER_PATH.replace(/\/+$/, "");
+  if (normalizedRequestedPath !== normalizedSecretPath) {
+    return false;
+  }
+  const params = new URLSearchParams(window.location.search);
+  return params.get("help") === SECRET_SLOT_HELPER_TOKEN;
+}
+
+async function fetchLobbySnapshot() {
+  const response = await fetch("/api/game/lobby", { cache: "no-store" });
+  const text = await response.text();
+  let data = null;
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch (_) {
+      if (!response.ok) {
+        throw new Error(`サーバーエラー (${response.status})`);
+      }
+      throw new Error("ロビー情報の解析に失敗しました");
+    }
+  }
+
+  if (!response.ok) {
+    const message =
+      data && typeof data.error === "string" && data.error.trim()
+        ? data.error.trim()
+        : `サーバーエラー (${response.status})`;
+    throw new Error(message);
+  }
+
+  return normalizeLobbySnapshot(data);
+}
+
+function normalizeLobbySnapshot(data) {
+  const slots = new Map();
+  const gameId = data && typeof data.gameId === "string" ? data.gameId : "";
+  const lobby =
+    data && typeof data.lobby === "object" && data.lobby !== null
+      ? data.lobby
+      : {};
+
+  for (let i = 1; i <= 4; i += 1) {
+    const key = String(i);
+    const slotId = `p${i}`;
+    const entry = lobby && typeof lobby[key] === "object" ? lobby[key] : null;
+    if (!entry) {
+      continue;
+    }
+    const userId =
+      typeof entry.id === "string" && entry.id.trim() ? entry.id.trim() : "";
+    const name =
+      typeof entry.name === "string" && entry.name.trim()
+        ? entry.name.trim()
+        : "";
+    if (!userId) {
+      continue;
+    }
+    slots.set(slotId, { userId, name });
+  }
+
+  return { gameId, slots };
 }
 
 function getControllerIdFromQuery() {

@@ -43,6 +43,14 @@ type controllerToken struct {
 	expiresAt time.Time
 }
 
+type gameStartEvent struct {
+	Type      string   `json:"type"`
+	Slots     []string `json:"slots"`
+	Forced    bool     `json:"forced"`
+	Timestamp int64    `json:"timestamp"`
+	Connected int      `json:"connected"`
+}
+
 // ControllerAssignment describes the link between a controller slot and a Persona user.
 type ControllerAssignment struct {
 	SlotID         string
@@ -100,6 +108,39 @@ func New(cfg Config, logger *slog.Logger) *Hub {
 		tokens:      make(map[string]controllerToken),
 		slotTokens:  make(map[string]string),
 	}
+}
+
+// NotifyGameStart emits a game start signal towards the connected game session.
+func (h *Hub) NotifyGameStart(slots []string, forced bool, connected int) bool {
+	slotsCopy := make([]string, len(slots))
+	copy(slotsCopy, slots)
+
+	event := gameStartEvent{
+		Type:      "game_start",
+		Slots:     slotsCopy,
+		Forced:    forced,
+		Timestamp: time.Now().UnixMilli(),
+		Connected: connected,
+	}
+
+	payload, err := json.Marshal(event)
+	if err != nil {
+		h.log.Error("game_start_event_encode_failed", "err", err.Error())
+		return false
+	}
+
+	h.mu.Lock()
+	session := h.game
+	h.mu.Unlock()
+
+	if session == nil {
+		h.log.Warn("game_start_event_dropped", "reason", "no game session")
+		return false
+	}
+
+	session.enqueue(payload, "server")
+	h.log.Info("game_start_event_dispatched", "forced", forced, "connected", connected, "slots", slotsCopy)
+	return true
 }
 
 // HandleWS upgrades HTTP connections to WebSocket and manages session lifecycles.

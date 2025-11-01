@@ -261,7 +261,35 @@ async function requestGameStart(event) {
       body: payload,
     });
     showOutput(data);
-    setStatus("ゲーム開始リクエストを送信しました。", "success");
+    let statusMessage = "ゲーム開始リクエストを送信しました。";
+    let statusVariant = "success";
+    if (data && typeof data === "object") {
+      const forced = Boolean(data.forced);
+      const notified = Boolean(data.notified);
+      const connected =
+        typeof data.connected === "number" ? data.connected : null;
+      const required =
+        typeof data.required === "number" ? data.required : null;
+      const count = typeof data.count === "number" ? data.count : null;
+      if (forced) {
+        if (notified) {
+          if (connected != null && required != null) {
+            statusMessage = `人数不足 (${connected}/${required}) ですがゲーム開始を強制しました。`;
+          } else {
+            statusMessage = "人数不足でしたがゲーム開始を強制しました。";
+          }
+        } else {
+          statusMessage =
+            "人数不足ですがゲーム開始信号を送信できませんでした（ゲーム画面未接続の可能性があります）。";
+          statusVariant = "error";
+        }
+      } else if (count === 0) {
+        statusMessage =
+          "対象のプレイヤーが見つからなかったため処理を行いませんでした。";
+        statusVariant = "error";
+      }
+    }
+    setStatus(statusMessage, statusVariant);
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
     showOutput(error.payload || { error: detail });
