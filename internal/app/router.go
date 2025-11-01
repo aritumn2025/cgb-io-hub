@@ -229,8 +229,12 @@ func (a *App) gameStartHandler(w http.ResponseWriter, r *http.Request) {
 
 	assignments := a.hub.ControllerAssignments()
 	index := make(map[string]hub.ControllerAssignment, len(assignments))
+	connectedPlayers := 0
 	for _, rec := range assignments {
 		index[rec.SlotID] = rec
+		if rec.Connected && strings.TrimSpace(rec.UserID) != "" {
+			connectedPlayers++
+		}
 	}
 
 	targetSlots := make([]string, 0)
@@ -259,17 +263,33 @@ func (a *App) gameStartHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	sort.Strings(targetSlots)
+
+	requiredPlayers := a.cfg.MaxControllers
+	if requiredPlayers <= 0 {
+		requiredPlayers = 4
+	}
+	forceStart := connectedPlayers < requiredPlayers
+
 	if len(targetSlots) == 0 {
+		notified := false
+		if forceStart {
+			notified = a.hub.NotifyGameStart(targetSlots, true, connectedPlayers)
+		}
 		a.respondJSON(w, http.StatusOK, map[string]any{
-			"gameId":  a.cfg.GameID,
-			"marked":  []any{},
-			"skipped": []any{},
-			"message": "no eligible players to mark",
+			"gameId":    a.cfg.GameID,
+			"marked":    []any{},
+			"count":     0,
+			"slots":     targetSlots,
+			"skipped":   []any{},
+			"message":   "no eligible players to mark",
+			"connected": connectedPlayers,
+			"required":  requiredPlayers,
+			"forced":    forceStart,
+			"notified":  notified,
 		})
 		return
 	}
-
-	sort.Strings(targetSlots)
 
 	type visitResult struct {
 		SlotID string `json:"slotId"`
@@ -297,12 +317,21 @@ func (a *App) gameStartHandler(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
+	notified := false
+	if forceStart {
+		notified = a.hub.NotifyGameStart(targetSlots, true, connectedPlayers)
+	}
+
 	a.respondJSON(w, http.StatusOK, map[string]any{
-		"gameId":  a.cfg.GameID,
-		"marked":  results,
-		"count":   len(results),
-		"slots":   targetSlots,
-		"skipped": skipped,
+		"gameId":    a.cfg.GameID,
+		"marked":    results,
+		"count":     len(results),
+		"slots":     targetSlots,
+		"skipped":   skipped,
+		"connected": connectedPlayers,
+		"required":  requiredPlayers,
+		"forced":    forceStart,
+		"notified":  notified,
 	})
 }
 
