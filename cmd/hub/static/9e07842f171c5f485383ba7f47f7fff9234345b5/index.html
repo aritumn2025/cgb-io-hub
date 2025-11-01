@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>CGB Controller</title>
+    <link rel="stylesheet" href="../styles.css" />
+    <link rel="icon" type="image/x-icon" href="favicons/favicon.ico" />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="favicons/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="favicons/favicon-16x16.png"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="favicons/apple-touch-icon.png"
+    />
+  </head>
+  <body class="theme-light">
+    <main id="controller-screen">
+      <div class="info-menu" id="info-menu">
+        <button
+          type="button"
+          class="info-toggle"
+          id="info-toggle"
+          aria-expanded="false"
+          aria-controls="info-panel"
+          aria-label="操作説明"
+        >
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+        <div
+          class="info-panel"
+          id="info-panel"
+          role="dialog"
+          aria-labelledby="info-panel-title"
+        >
+          <p class="info-panel-title" id="info-panel-title">操作説明</p>
+          <p>スティックはドラッグ、十字キーはタップで入力されます。</p>
+          <div class="control-toggle" id="control-toggle">
+            <button
+              type="button"
+              class="control-toggle__button"
+              data-control-toggle
+              aria-pressed="true"
+              aria-label="スティック操作に切り替え"
+            >
+              スティックに切り替え
+            </button>
+          </div>
+          <div class="theme-toggle" id="theme-toggle">
+            <button
+              type="button"
+              class="pill-button theme-toggle__button"
+              data-theme-toggle
+              aria-pressed="true"
+            >
+              <span
+                class="theme-toggle__icon"
+                data-theme-icon
+                aria-hidden="true"
+                >☾</span
+              >
+              <span class="theme-toggle__text" data-theme-text
+                >ダークモード</span
+              >
+            </button>
+          </div>
+          <button
+            type="button"
+            class="pill-button session-reset-button"
+            data-session-reset
+          >
+            接続先を変更
+          </button>
+          <div class="status-card" role="status">
+            <div class="status-user" data-user-display>ゲスト</div>
+            <div class="status-connection">
+              <span class="status-lamp" data-lamp></span>
+              <span class="status-state" data-status>未接続</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <section class="controller" data-mode="dpad">
+        <div class="stick-area" id="stick" aria-hidden="true">
+          <div class="stick-thumb" id="stick-thumb"></div>
+        </div>
+        <div class="dpad-area" id="dpad" aria-hidden="false">
+          <button
+            type="button"
+            class="dpad-button dpad-button--up"
+            data-dpad="up"
+            aria-label="上"
+          >
+            ↑
+          </button>
+          <button
+            type="button"
+            class="dpad-button dpad-button--left"
+            data-dpad="left"
+            aria-label="左"
+          >
+            ←
+          </button>
+          <button
+            type="button"
+            class="dpad-button dpad-button--right"
+            data-dpad="right"
+            aria-label="右"
+          >
+            →
+          </button>
+          <button
+            type="button"
+            class="dpad-button dpad-button--down"
+            data-dpad="down"
+            aria-label="下"
+          >
+            ↓
+          </button>
+        </div>
+        <div class="buttons">
+          <button type="button" class="primary-action" data-btn="a">
+            攻撃
+          </button>
+        </div>
+      </section>
+    </main>
+    <section
+      class="player-picker is-hidden"
+      id="session-form"
+      aria-labelledby="session-form-title"
+    >
+      <div class="player-picker__content">
+        <h1 class="player-picker__title" id="session-form-title">
+          オンライン コントローラー
+        </h1>
+        <section
+          class="player-picker__slot-helper is-hidden"
+          data-slot-helper
+          aria-labelledby="slot-helper-title"
+        >
+          <div class="player-picker__slot-header">
+            <h2 class="player-picker__slot-title" id="slot-helper-title">
+              接続先を選択
+            </h2>
+            <button
+              type="button"
+              class="player-picker__slot-refresh"
+              data-slot-refresh
+            >
+              再読み込み
+            </button>
+          </div>
+          <p class="player-picker__slot-note" data-slot-note>
+            ロビーの情報を読み込んでいます…
+          </p>
+          <div class="player-picker__slot-grid" data-slot-grid>
+            <button
+              type="button"
+              class="player-picker__slot-button"
+              data-slot-button="p1"
+              disabled
+            >
+              <span class="player-picker__slot-label">P1</span>
+              <span class="player-picker__slot-name" data-slot-name="p1"
+                >空席</span
+              >
+              <span class="player-picker__slot-id" data-slot-id="p1">-</span>
+            </button>
+            <button
+              type="button"
+              class="player-picker__slot-button"
+              data-slot-button="p2"
+              disabled
+            >
+              <span class="player-picker__slot-label">P2</span>
+              <span class="player-picker__slot-name" data-slot-name="p2"
+                >空席</span
+              >
+              <span class="player-picker__slot-id" data-slot-id="p2">-</span>
+            </button>
+            <button
+              type="button"
+              class="player-picker__slot-button"
+              data-slot-button="p3"
+              disabled
+            >
+              <span class="player-picker__slot-label">P3</span>
+              <span class="player-picker__slot-name" data-slot-name="p3"
+                >空席</span
+              >
+              <span class="player-picker__slot-id" data-slot-id="p3">-</span>
+            </button>
+            <button
+              type="button"
+              class="player-picker__slot-button"
+              data-slot-button="p4"
+              disabled
+            >
+              <span class="player-picker__slot-label">P4</span>
+              <span class="player-picker__slot-name" data-slot-name="p4"
+                >空席</span
+              >
+              <span class="player-picker__slot-id" data-slot-id="p4">-</span>
+            </button>
+          </div>
+        </section>
+        <form class="player-picker__form" data-session-form autocomplete="off">
+          <label class="player-picker__label" for="session-user-id">
+            ユーザーID
+            <input
+              type="text"
+              class="player-picker__input"
+              id="session-user-id"
+              data-session-input
+              placeholder="例: k764-3yjp"
+              inputmode="text"
+              autocomplete="off"
+              spellcheck="false"
+              aria-describedby="session-form-hint"
+              required
+            />
+          </label>
+          <button
+            type="submit"
+            class="player-picker__button"
+            data-session-submit
+          >
+            接続する
+          </button>
+        </form>
+        <p
+          class="player-picker__error"
+          data-session-error
+          aria-live="polite"
+        ></p>
+      </div>
+    </section>
+    <script src="controller.js" defer></script>
+  </body>
+</html>
