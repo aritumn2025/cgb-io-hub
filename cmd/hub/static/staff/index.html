@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>PersonaGo スタッフツール</title>
+    <link rel="stylesheet" href="/staff/staff.css" />
+  </head>
+  <body>
+    <main class="container">
+      <header class="page-header">
+        <h1>PersonaGo スタッフ向けツール</h1>
+        <p class="page-description">
+          手動でロビー操作やゲーム開始前の処理を送信できます。
+        </p>
+      </header>
+
+      <section class="panel">
+        <h2>ゲーム開始準備 (5 秒前スキップ)</h2>
+        <p class="panel-description">
+          下のボタンで <code>/api/game/start</code> にリクエストを送信します。スロットを選択しない場合は接続済みの全プレイヤーが対象になります。
+        </p>
+        <form class="form-inline" data-start-form>
+          <fieldset class="slot-selector">
+            <legend>対象スロット</legend>
+            <label>
+              <input type="checkbox" value="p1" data-slot-checkbox="1" />
+              P1
+            </label>
+            <label>
+              <input type="checkbox" value="p2" data-slot-checkbox="2" />
+              P2
+            </label>
+            <label>
+              <input type="checkbox" value="p3" data-slot-checkbox="3" />
+              P3
+            </label>
+            <label>
+              <input type="checkbox" value="p4" data-slot-checkbox="4" />
+              P4
+            </label>
+          </fieldset>
+          <button type="submit" class="button primary">
+            ゲーム開始 (5 秒前へ)
+          </button>
+        </form>
+      </section>
+
+      <section class="panel">
+        <h2>GameLobby 編集</h2>
+        <p class="panel-description">
+          <code>/api/game/lobby</code> の取得・更新を行います。ユーザー ID を入力して更新すると PersonaGo 側のロビーが書き換わります。空欄のスロットは
+          <code>null</code> として送信されます。
+        </p>
+
+        <div class="actions">
+          <button type="button" class="button" data-action="fetch-lobby">
+            ロビー取得
+          </button>
+          <button type="button" class="button success" data-action="update-lobby">
+            ロビー更新
+          </button>
+          <button
+            type="button"
+            class="button danger"
+            data-action="clear-lobby"
+          >
+            ロビー全消去 (POST)
+          </button>
+        </div>
+
+        <div class="lobby-meta">
+          <span>Game ID: <code data-game-id>-</code></span>
+          <span>最終更新: <span data-last-updated>-</span></span>
+        </div>
+
+        <div class="table-wrapper">
+          <table class="lobby-table">
+            <thead>
+              <tr>
+                <th scope="col">Slot</th>
+                <th scope="col">ユーザー ID</th>
+                <th scope="col">名前</th>
+                <th scope="col">性格</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr data-slot-row="1">
+                <th scope="row">P1</th>
+                <td>
+                  <input
+                    type="text"
+                    inputmode="latin"
+                    autocomplete="off"
+                    placeholder="例: abcd-efgh"
+                    data-slot-input="1"
+                  />
+                </td>
+                <td data-slot-name="1">-</td>
+                <td data-slot-personality="1">-</td>
+              </tr>
+              <tr data-slot-row="2">
+                <th scope="row">P2</th>
+                <td>
+                  <input
+                    type="text"
+                    inputmode="latin"
+                    autocomplete="off"
+                    placeholder="例: abcd-efgh"
+                    data-slot-input="2"
+                  />
+                </td>
+                <td data-slot-name="2">-</td>
+                <td data-slot-personality="2">-</td>
+              </tr>
+              <tr data-slot-row="3">
+                <th scope="row">P3</th>
+                <td>
+                  <input
+                    type="text"
+                    inputmode="latin"
+                    autocomplete="off"
+                    placeholder="例: abcd-efgh"
+                    data-slot-input="3"
+                  />
+                </td>
+                <td data-slot-name="3">-</td>
+                <td data-slot-personality="3">-</td>
+              </tr>
+              <tr data-slot-row="4">
+                <th scope="row">P4</th>
+                <td>
+                  <input
+                    type="text"
+                    inputmode="latin"
+                    autocomplete="off"
+                    placeholder="例: abcd-efgh"
+                    data-slot-input="4"
+                  />
+                </td>
+                <td data-slot-name="4">-</td>
+                <td data-slot-personality="4">-</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>レスポンス / ステータス</h2>
+        <p class="panel-description">
+          直近で行ったリクエストの結果が表示されます。
+        </p>
+        <div class="status" data-status role="status">未実行</div>
+        <pre class="output" data-output>--</pre>
+      </section>
+    </main>
+
+    <script type="module" src="/staff/staff.js"></script>
+  </body>
+</html>

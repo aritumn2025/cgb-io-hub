@@ -18,20 +18,52 @@
   --color-dpad-border: rgba(88, 156, 255, 0.4);
   --control-size: clamp(220px, 32vw, 300px);
   --control-gap: clamp(16px, 4vw, 24px);
-  --info-panel-bg: linear-gradient(160deg, rgba(34, 44, 62, 0.92), rgba(12, 16, 24, 0.94));
+  --info-panel-bg: linear-gradient(
+    160deg,
+    rgba(34, 44, 62, 0.92),
+    rgba(12, 16, 24, 0.94)
+  );
   --info-panel-border: var(--color-border);
   --info-panel-shadow: 0 24px 48px rgba(0, 0, 0, 0.45);
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
 }
 
 body {
   margin: 0;
   padding: 0;
-  min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
   background: var(--color-bg);
   color: var(--color-text);
+}
+
+/* dvh 非対応ブラウザ向けのフォールバック（VisualViewport で与える px） */
+@supports not (height: 100dvh) {
+  body {
+    min-height: var(--vhpx, 100vh);
+  }
+}
+
+/* コントローラ画面を全画面固定にしてスクロール源を断つ */
+body.lock-scroll {
+  position: fixed; /* 画面に固定 */
+  inset: 0; /* top/right/bottom/left: 0 */
+  width: 100%;
+  height: 100dvh; /* iOS Safari でも動的バーに追従する */
+  overflow: hidden; /* ここで縦横スクロールを封じる */
+}
+
+@supports not (height: 100dvh) {
+  body.lock-scroll {
+    height: var(--vhpx, 100vh);
+  }
 }
 
 body.theme-dark {
@@ -55,7 +87,11 @@ body.theme-light {
   --color-dpad-bg: rgba(48, 90, 190, 0.16);
   --color-dpad-active-bg: rgba(48, 90, 190, 0.28);
   --color-dpad-border: rgba(48, 90, 190, 0.3);
-  --info-panel-bg: linear-gradient(160deg, rgba(255, 255, 255, 0.97), rgba(238, 244, 255, 0.98));
+  --info-panel-bg: linear-gradient(
+    160deg,
+    rgba(255, 255, 255, 0.97),
+    rgba(238, 244, 255, 0.98)
+  );
   --info-panel-border: var(--color-border);
   --info-panel-shadow: 0 22px 44px rgba(24, 34, 72, 0.16);
 }
@@ -69,41 +105,53 @@ main {
   display: flex;
   flex-direction: column;
   gap: 24px;
-  padding: 32px 24px 72px;
+  padding: 32px 24px calc(72px + env(safe-area-inset-bottom));
   box-sizing: border-box;
   position: relative;
 }
 
-.status {
-  text-align: center;
-  font-size: 0.95rem;
-  opacity: 0.9;
+.status-card {
+  width: 100%;
+  box-sizing: border-box;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px 22px;
+  border-radius: 18px;
+  background: var(--color-elevated-bg);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--info-panel-shadow);
   align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-  margin: 0;
+  text-align: center;
 }
 
-.info-panel .status {
-  width: auto;
-  align-self: center;
-  margin-top: 0;
+.status-user {
+  font-size: 1rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
 }
 
-.status span {
+.status-connection {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.92rem;
+  opacity: 0.85;
+}
+
+.status-state {
   display: inline-flex;
   align-items: center;
   gap: 6px;
 }
 
 .status-lamp {
-  width: 10px;
-  height: 10px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
   background: var(--color-lamp-idle);
   display: inline-block;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.05);
 }
 
 .controller {
@@ -113,6 +161,13 @@ main {
   align-items: center;
   justify-items: center;
   justify-content: center;
+  /* 長押しでの選択/コールアウトをコントローラ領域だけ無効化 */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent; /* タップ時の青いハイライトを除去（iOS系） */
+  overscroll-behavior: contain; /* 端スワイプやプルリフレッシュの誤発火を抑止 */
+  touch-action: none; /* ダブルタップ/ピンチ/パンを任意実装に委ねる */
 }
 
 .controller[data-mode="stick"] .dpad-area {
@@ -177,8 +232,8 @@ main {
   padding: 0;
   width: 100%;
   height: 100%;
-  transition: transform 80ms ease, background 120ms ease, border-color 120ms ease,
-    box-shadow 120ms ease;
+  transition: transform 80ms ease, background 120ms ease,
+    border-color 120ms ease, box-shadow 120ms ease;
   box-shadow: 0 8px 20px var(--color-shadow);
 }
 
@@ -255,6 +310,7 @@ button:active,
 button.active {
   transform: scale(0.95);
   background: var(--color-button-active-bg);
+  box-shadow: 0 6px 16px var(--color-shadow);
 }
 
 .player-picker {
@@ -304,12 +360,75 @@ button.active {
 
 .player-picker__button {
   font-size: 1.1rem;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: none;
+  background: var(--color-button-bg);
+  color: inherit;
+  cursor: pointer;
+  transition: background 120ms ease, transform 80ms ease;
+}
+
+.player-picker__button:active {
+  background: var(--color-button-active-bg);
+  transform: scale(0.98);
+}
+
+.player-picker__form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+.player-picker__label {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.player-picker__input {
+  width: 100%;
+  font-size: 1.1rem;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+  background: var(--color-elevated-bg);
+  color: inherit;
+  box-sizing: border-box;
+}
+
+.player-picker__input:focus-visible {
+  outline: 2px solid rgba(88, 156, 255, 0.65);
+  outline-offset: 2px;
+}
+
+.player-picker__hint {
+  margin: 0;
+  font-size: 0.85rem;
+  opacity: 0.75;
+}
+
+.player-picker__error {
+  min-height: 1.2em;
+  margin: 0;
+  color: #ff6b6b;
+  font-size: 0.95rem;
+}
+
+.player-picker__form.is-loading .player-picker__button,
+.player-picker__form.is-loading .player-picker__input {
+  opacity: 0.7;
+  pointer-events: none;
 }
 
 .info-menu {
   position: fixed;
-  top: 12px;
-  right: 12px;
+  top: calc(12px + env(safe-area-inset-top));
+  right: calc(12px + env(safe-area-inset-right));
   display: flex;
   flex-direction: column;
   align-items: flex-end;
@@ -383,6 +502,8 @@ button.active {
   display: flex;
   flex-direction: column;
   gap: 24px;
+  align-items: center;
+  text-align: center;
 }
 
 .info-menu.open .info-panel {
@@ -396,6 +517,11 @@ button.active {
   margin: 0 0 10px;
   font-size: 1.25rem;
   font-weight: 650;
+}
+
+.info-panel > p:first-of-type {
+  width: 100%;
+  text-align: left;
 }
 
 .info-panel p:not(.status) {
@@ -418,18 +544,19 @@ button.active {
 .control-toggle {
   display: flex;
   flex-direction: column;
-  align-items: stretch;
+  align-items: center;
   justify-content: center;
   gap: 16px;
   padding: 0;
   margin: 0;
+  width: 100%;
 }
 
 .control-toggle__label {
   margin: 0;
   font-size: 0.95rem;
   font-weight: 600;
-  text-align: left;
+  text-align: center;
 }
 
 .control-toggle__button {
@@ -461,47 +588,27 @@ button.active {
 .theme-toggle {
   display: flex;
   flex-direction: column;
-  align-items: stretch;
+  align-items: center;
   justify-content: center;
   gap: 16px;
   padding: 0;
   margin: 0;
+  width: 100%;
 }
 
 .theme-toggle__label {
   margin: 0;
   font-size: 0.95rem;
   font-weight: 600;
-  text-align: left;
+  text-align: center;
 }
 
 .theme-toggle__button {
-  padding: 14px 20px;
-  border-radius: 999px;
-  font-size: 0.95rem;
-  pointer-events: auto;
-  background: none;
-  border: 1px solid var(--color-border);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  line-height: 1;
-  transition: border-color 120ms ease;
   width: 100%;
-}
-
-.theme-toggle__button:active {
-  border-color: rgba(88, 156, 255, 0.65);
 }
 
 .theme-toggle__button[aria-pressed="true"] {
   border-color: rgba(88, 156, 255, 0.65);
-}
-
-.theme-toggle__button:focus-visible {
-  outline: 2px solid rgba(88, 156, 255, 0.65);
-  outline-offset: 3px;
 }
 
 .theme-toggle__icon {
@@ -510,7 +617,21 @@ button.active {
 }
 
 .theme-toggle__text {
-  font-weight: 600;
+  font-weight: 500;
+}
+
+.session-reset-button {
+  background: rgba(88, 156, 255, 0.12);
+  border-color: rgba(88, 156, 255, 0.24);
+}
+
+.session-reset-button:hover,
+.session-reset-button:focus-visible {
+  background: rgba(88, 156, 255, 0.22);
+}
+
+.session-reset-button:active {
+  transform: translateY(1px);
 }
 
 .primary-action {
@@ -528,4 +649,29 @@ button.active {
 .id-emphasis {
   font-weight: 600;
   font-size: 1.1rem;
+}
+.pill-button {
+  padding: 14px 20px;
+  border-radius: 999px;
+  font-size: 0.95rem;
+  pointer-events: auto;
+  background: none;
+  border: 1px solid var(--color-border);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  line-height: 1;
+  transition: border-color 120ms ease, background 120ms ease, color 120ms ease;
+  width: 100%;
+  cursor: pointer;
+}
+
+.pill-button:active {
+  border-color: rgba(88, 156, 255, 0.65);
+}
+
+.pill-button:focus-visible {
+  outline: 2px solid rgba(88, 156, 255, 0.65);
+  outline-offset: 3px;
 }

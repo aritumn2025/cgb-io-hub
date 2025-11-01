@@ -2,7 +2,10 @@
 <html lang="ja">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
     <title>CGB Controller</title>
     <link rel="stylesheet" href="styles.css" />
     <link rel="icon" type="image/x-icon" href="favicons/favicon.ico" />
@@ -61,7 +64,7 @@
           <div class="theme-toggle" id="theme-toggle">
             <button
               type="button"
-              class="theme-toggle__button"
+              class="pill-button theme-toggle__button"
               data-theme-toggle
               aria-pressed="true"
             >
@@ -76,11 +79,20 @@
               >
             </button>
           </div>
-          <p class="status" role="status">
-            <span data-id></span>
-            ／ <span data-status>未接続</span>
-            <span class="status-lamp" data-lamp></span>
-          </p>
+          <button
+            type="button"
+            class="pill-button session-reset-button"
+            data-session-reset
+          >
+            接続先を変更
+          </button>
+          <div class="status-card" role="status">
+            <div class="status-user" data-user-display>ゲスト</div>
+            <div class="status-connection">
+              <span class="status-lamp" data-lamp></span>
+              <span class="status-state" data-status>未接続</span>
+            </div>
+          </div>
         </div>
       </div>
       <section class="controller" data-mode="dpad">
@@ -130,46 +142,49 @@
     </main>
     <section
       class="player-picker is-hidden"
-      id="player-picker"
-      aria-labelledby="player-picker-title"
+      id="session-form"
+      aria-labelledby="session-form-title"
     >
       <div class="player-picker__content">
-        <h1 class="player-picker__title" id="player-picker-title">
-          プレイヤーを選択
+        <h1 class="player-picker__title" id="session-form-title">
+          ユーザーIDを入力
         </h1>
         <p class="player-picker__description">
-          利用するコントローラーを選択してください。
+          Persona Go
+          のマイページに表示されるユーザーIDを入力すると自動でプレイヤー枠に割り当てられます。
         </p>
-        <div class="player-picker__buttons">
+        <form class="player-picker__form" data-session-form autocomplete="off">
+          <label class="player-picker__label" for="session-user-id">
+            ユーザーID
+            <input
+              type="text"
+              class="player-picker__input"
+              id="session-user-id"
+              data-session-input
+              placeholder="例: k764-3yjp"
+              inputmode="text"
+              autocomplete="off"
+              spellcheck="false"
+              aria-describedby="session-form-hint"
+              required
+            />
+          </label>
           <button
-            type="button"
+            type="submit"
             class="player-picker__button"
-            data-player-id="p1"
+            data-session-submit
           >
-            プレイヤー１
+            接続する
           </button>
-          <button
-            type="button"
-            class="player-picker__button"
-            data-player-id="p2"
-          >
-            プレイヤー２
-          </button>
-          <button
-            type="button"
-            class="player-picker__button"
-            data-player-id="p3"
-          >
-            プレイヤー３
-          </button>
-          <button
-            type="button"
-            class="player-picker__button"
-            data-player-id="p4"
-          >
-            プレイヤー４
-          </button>
-        </div>
+        </form>
+        <p class="player-picker__hint" id="session-form-hint">
+          QR コードを読み取った場合は自動入力されます。
+        </p>
+        <p
+          class="player-picker__error"
+          data-session-error
+          aria-live="polite"
+        ></p>
       </div>
     </section>
     <script src="controller.js" defer></script>

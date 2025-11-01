@@ -3,12 +3,16 @@ package app
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
+	"runtime/debug"
+	"strings"
 	"time"
 
-	"github.com/59GauthierLab/cgb-ctrl-hub/internal/config"
-	"github.com/59GauthierLab/cgb-ctrl-hub/internal/hub"
+	"github.com/aritumn2025/cgb-io-hub/internal/config"
+	"github.com/aritumn2025/cgb-io-hub/internal/hub"
+	"github.com/aritumn2025/cgb-io-hub/internal/persona"
 )
 
 const (
@@ -18,10 +22,11 @@ const (
 
 // App wires together the HTTP server and hub component.
 type App struct {
-	cfg    config.Config
-	logger *slog.Logger
-	hub    *hub.Hub
-	server *http.Server
+	cfg     config.Config
+	logger  *slog.Logger
+	hub     *hub.Hub
+	persona *persona.Client
+	server  *http.Server
 }
 
 // New initialises application state and constructs the HTTP server.
@@ -41,21 +46,38 @@ func New(cfg config.Config, assets http.FileSystem, logger *slog.Logger) (*App, 
 		WriteTimeout:    cfg.WriteTimeout,
 	}, logger.With("component", "hub"))
 
-	mux := buildRouter(hubInstance, assets)
+	var personaClient *persona.Client
+	if base := strings.TrimSpace(cfg.DBBaseURL); base != "" {
+		client, err := persona.New(persona.Config{
+			BaseURL:    base,
+			GameName:   cfg.GameID,
+			Attraction: cfg.AttractionID,
+			Staff:      cfg.StaffName,
+			Timeout:    cfg.DBAPITimeout,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("initialise persona client: %w", err)
+		}
+		personaClient = client
+	}
 
-	server := &http.Server{
+	application := &App{
+		cfg:     cfg,
+		logger:  logger,
+		hub:     hubInstance,
+		persona: personaClient,
+	}
+
+	mux := application.buildRouter(assets)
+
+	application.server = &http.Server{
 		Addr:              cfg.Addr,
 		Handler:           loggingMiddleware(logger, mux),
 		ReadHeaderTimeout: readHeaderTimeout,
 		IdleTimeout:       idleTimeout,
 	}
 
-	return &App{
-		cfg:    cfg,
-		logger: logger,
-		hub:    hubInstance,
-		server: server,
-	}, nil
+	return application, nil
 }
 
 // Run starts the HTTP server and blocks until either the context is done or
@@ -96,4 +118,10 @@ func (a *App) Run(ctx context.Context) error {
 		}
 		return nil
 	}
+}
+
+func (a *App) logErrorWithStack(msg string, args ...any) {
+	stack := strings.TrimSpace(string(debug.Stack()))
+	fields := append(args, "stack", stack)
+	a.logger.Error(msg, fields...)
 }

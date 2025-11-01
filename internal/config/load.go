@@ -18,6 +18,17 @@ func Load(args []string) (Config, error) {
 	registerTimeoutFlag := fs.Duration("register-timeout", 0, "controller register timeout (REGISTER_TIMEOUT)")
 	writeTimeoutFlag := fs.Duration("write-timeout", 0, "game write timeout (WRITE_TIMEOUT)")
 	shutdownTimeoutFlag := fs.Duration("shutdown-timeout", 0, "graceful shutdown timeout (SHUTDOWN_TIMEOUT)")
+	dbBaseURLFlag := fs.String("db-base-url", "", "PersonaGo API base URL (DB_BASE_URL)")
+	personaBaseURLFlag := fs.String("persona-base-url", "", "PersonaGo API base URL (deprecated: PERSONA_BASE_URL)")
+	gameIDFlag := fs.String("game-id", "", "PersonaGo game identifier (GAME_ID)")
+	personaGameFlag := fs.String("persona-game", "", "PersonaGo game name (deprecated: PERSONA_GAME)")
+	attractionIDFlag := fs.String("attraction-id", "", "PersonaGo attraction identifier (ATTRACTION_ID)")
+	personaAttractionFlag := fs.String("persona-attraction", "", "PersonaGo attraction name (deprecated: PERSONA_ATTRACTION)")
+	staffNameFlag := fs.String("staff-name", "", "PersonaGo staff identifier (STAFF_NAME)")
+	personaStaffFlag := fs.String("persona-staff", "", "PersonaGo staff identifier (deprecated: PERSONA_STAFF)")
+	dbAPITimeoutFlag := fs.Duration("db-api-timeout", 0, "PersonaGo API client timeout (DB_API_TIMEOUT)")
+	personaTimeoutFlag := fs.Duration("persona-timeout", 0, "PersonaGo API client timeout (deprecated: PERSONA_TIMEOUT)")
+	sessionTokenTTLFlag := fs.Duration("session-token-ttl", 0, "controller session token TTL (SESSION_TOKEN_TTL)")
 
 	if err := fs.Parse(args); err != nil {
 		return Config{}, err
@@ -31,6 +42,45 @@ func Load(args []string) (Config, error) {
 		RegisterTimeout: firstPositiveDuration(*registerTimeoutFlag, envToDuration("REGISTER_TIMEOUT"), defaultRegisterTimeout),
 		WriteTimeout:    firstPositiveDuration(*writeTimeoutFlag, envToDuration("WRITE_TIMEOUT"), defaultWriteTimeout),
 		ShutdownTimeout: firstPositiveDuration(*shutdownTimeoutFlag, envToDuration("SHUTDOWN_TIMEOUT"), defaultShutdownTimeout),
+		DBBaseURL: strings.TrimSpace(firstNonEmpty(
+			*dbBaseURLFlag,
+			*personaBaseURLFlag,
+			os.Getenv("DB_BASE_URL"),
+			os.Getenv("PERSONA_BASE_URL"),
+		)),
+		GameID: firstNonEmpty(
+			*gameIDFlag,
+			*personaGameFlag,
+			os.Getenv("GAME_ID"),
+			os.Getenv("PERSONA_GAME"),
+			defaultGameID,
+		),
+		AttractionID: firstNonEmpty(
+			*attractionIDFlag,
+			*personaAttractionFlag,
+			os.Getenv("ATTRACTION_ID"),
+			os.Getenv("PERSONA_ATTRACTION"),
+			defaultAttractionID,
+		),
+		StaffName: firstNonEmpty(
+			*staffNameFlag,
+			*personaStaffFlag,
+			os.Getenv("STAFF_NAME"),
+			os.Getenv("PERSONA_STAFF"),
+			defaultStaffName,
+		),
+		DBAPITimeout: firstPositiveDuration(
+			*dbAPITimeoutFlag,
+			*personaTimeoutFlag,
+			envToDuration("DB_API_TIMEOUT"),
+			envToDuration("PERSONA_TIMEOUT"),
+			defaultDBAPITimeout,
+		),
+		SessionTokenTTL: firstPositiveDuration(*sessionTokenTTLFlag, envToDuration("SESSION_TOKEN_TTL"), defaultSessionTokenTTL),
+	}
+
+	if cfg.SessionTokenTTL <= 0 {
+		cfg.SessionTokenTTL = defaultSessionTokenTTL
 	}
 
 	return cfg, nil

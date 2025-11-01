@@ -1,0 +1,43 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches:
+      # ブランチを変える時は次を変更
+      - main
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    env:
+      DEPLOY_PATH: /srv/cgb-io-hub
+      # ブランチを変える時は次を変更
+      REFERENCE_BRANCH: main
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Start SSH agent
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Add host to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H "${{ secrets.HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Deploy over SSH
+        env:
+          HOST: ${{ secrets.HOST }}
+          USER: ${{ secrets.USER }}
+        run: |
+          ssh "${USER}@${HOST}" <<EOF
+          set -euo pipefail
+          cd "${DEPLOY_PATH}"
+          git switch ${REFERENCE_BRANCH}
+          git fetch origin ${REFERENCE_BRANCH}
+          git reset --hard origin/${REFERENCE_BRANCH}
+          docker compose up --build -d
+          EOF

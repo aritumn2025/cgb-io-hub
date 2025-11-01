@@ -1,0 +1,39 @@
+services:
+  hub:
+    build:
+      context: .
+    image: cgb-io-hub:latest
+    container_name: cgb-io-hub
+    ports:
+      - "127.0.0.1:8765:8765"
+    environment:
+      ADDR: "${ADDR:-:8765}"
+      ORIGINS: "${ORIGINS:-*}"
+      MAX_CLIENTS: "${MAX_CLIENTS:-4}"
+      RATE_HZ: "${RATE_HZ:-60}"
+      REGISTER_TIMEOUT: "${REGISTER_TIMEOUT:-5s}"
+      WRITE_TIMEOUT: "${WRITE_TIMEOUT:-2s}"
+      SHUTDOWN_TIMEOUT: "${SHUTDOWN_TIMEOUT:-10s}"
+      DB_BASE_URL: "${DB_BASE_URL}"
+      GAME_ID: "${GAME_ID}"
+      ATTRACTION_ID: "${ATTRACTION_ID}"
+      STAFF_NAME: "${STAFF_NAME}"
+      DB_API_TIMEOUT: "${DB_API_TIMEOUT}"
+      SESSION_TOKEN_TTL: "${SESSION_TOKEN_TTL}"
+    restart: unless-stopped
+
+  persona-backend:
+    profiles:
+      - persona
+    build:
+      context: ../PersonaGo-backend
+    image: persona-backend:latest
+    container_name: persona-backend
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      PORT: 8080
+      DATABASE_PATH: /app/database.db
+    volumes:
+      - ../PersonaGo-backend/database.db:/app/database.db
+    restart: unless-stopped

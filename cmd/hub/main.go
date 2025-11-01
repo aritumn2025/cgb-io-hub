@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"embed"
 	"errors"
@@ -10,10 +11,11 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
-	"github.com/59GauthierLab/cgb-ctrl-hub/internal/app"
-	"github.com/59GauthierLab/cgb-ctrl-hub/internal/config"
+	"github.com/aritumn2025/cgb-io-hub/internal/app"
+	"github.com/aritumn2025/cgb-io-hub/internal/config"
 )
 
 //go:embed static
@@ -22,6 +24,8 @@ var embeddedWeb embed.FS
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
+
+	loadEnvironment()
 
 	if err := run(ctx, os.Args[1:]); err != nil {
 		if errors.Is(err, context.Canceled) {
@@ -91,4 +95,66 @@ func staticAssets() (http.FileSystem, error) {
 		return nil, err
 	}
 	return http.FS(sub), nil
+}
+
+func loadEnvironment() {
+	candidates := []string{".env", ".env.sample"}
+	for _, path := range candidates {
+		file, err := os.Open(path)
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				continue
+			}
+			fmt.Fprintf(os.Stderr, "warning: failed to read %s: %v\n", path, err)
+			continue
+		}
+
+		loaded := loadEnvFromReader(file)
+		file.Close()
+
+		if loaded && path == ".env" {
+			return
+		}
+		if loaded && path == ".env.sample" {
+			return
+		}
+	}
+}
+
+func loadEnvFromReader(r *os.File) bool {
+	scanner := bufio.NewScanner(r)
+	hasEntry := false
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		if strings.HasPrefix(line, "export ") {
+			line = strings.TrimSpace(strings.TrimPrefix(line, "export "))
+		}
+		sep := strings.Index(line, "=")
+		if sep <= 0 {
+			continue
+		}
+		key := strings.TrimSpace(line[:sep])
+		if key == "" {
+			continue
+		}
+		if _, exists := os.LookupEnv(key); exists {
+			hasEntry = true
+			continue
+		}
+		value := strings.TrimSpace(line[sep+1:])
+		value = strings.Trim(value, `"'`)
+		if err := os.Setenv(key, value); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to set %s from env file: %v\n", key, err)
+			continue
+		}
+		hasEntry = true
+	}
+	if err := scanner.Err(); err != nil {
+		fmt.Fprintf(os.Stderr, "warning: failed to parse env file: %v\n", err)
+		return hasEntry
+	}
+	return hasEntry
 }

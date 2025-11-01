@@ -2,6 +2,8 @@ package hub
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"regexp"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -22,6 +25,34 @@ const (
 )
 
 var controllerIDPattern = regexp.MustCompile(`^[a-z0-9_-]{1,32}$`)
+
+var (
+	errInvalidToken = errors.New("invalid controller token")
+	errExpiredToken = errors.New("controller token expired")
+)
+
+type userProfile struct {
+	ID          string
+	Name        string
+	Personality string
+}
+
+type controllerToken struct {
+	slotID    string
+	user      userProfile
+	expiresAt time.Time
+}
+
+// ControllerAssignment describes the link between a controller slot and a Persona user.
+type ControllerAssignment struct {
+	SlotID         string
+	UserID         string
+	Name           string
+	Personality    string
+	Connected      bool
+	LastSeen       time.Time
+	TokenExpiresAt time.Time
+}
 
 // Config collects tunable parameters for Hub behaviour.
 type Config struct {
@@ -40,6 +71,8 @@ type Hub struct {
 	mu          sync.Mutex
 	controllers map[string]*controllerSession
 	game        *gameSession
+	tokens      map[string]controllerToken
+	slotTokens  map[string]string
 }
 
 // New creates a Hub with sane defaults applied to the provided Config.
@@ -64,6 +97,8 @@ func New(cfg Config, logger *slog.Logger) *Hub {
 		cfg:         cfg,
 		log:         logger,
 		controllers: make(map[string]*controllerSession),
+		tokens:      make(map[string]controllerToken),
+		slotTokens:  make(map[string]string),
 	}
 }
 
@@ -102,7 +137,7 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 	case roleGame:
 		status, reason = h.handleGame(ctx, conn, remote)
 	case roleController:
-		status, reason = h.handleController(ctx, conn, remote, reg.ID)
+		status, reason = h.handleController(ctx, conn, remote, reg)
 	default:
 		status = websocket.StatusPolicyViolation
 		reason = "invalid role"
@@ -140,8 +175,9 @@ func (h *Hub) Shutdown(ctx context.Context) {
 }
 
 type registerPayload struct {
-	Role string `json:"role"`
-	ID   string `json:"id,omitempty"`
+	Role  string `json:"role"`
+	ID    string `json:"id,omitempty"`
+	Token string `json:"token,omitempty"`
 }
 
 func (h *Hub) readRegister(ctx context.Context, conn *websocket.Conn, remote string) (registerPayload, websocket.StatusCode, string) {
@@ -168,14 +204,20 @@ func (h *Hub) readRegister(ctx context.Context, conn *websocket.Conn, remote str
 
 	payload.Role = strings.ToLower(strings.TrimSpace(payload.Role))
 	payload.ID = strings.ToLower(strings.TrimSpace(payload.ID))
+	payload.Token = strings.TrimSpace(payload.Token)
 
 	if payload.Role == roleController {
-		if payload.ID == "" {
-			h.log.Warn("register_missing_id", "role", roleController, "id", "", "remote_ip", remote)
-			return registerPayload{}, websocket.StatusPolicyViolation, "controller id required"
-		}
-		if !controllerIDPattern.MatchString(payload.ID) {
-			h.log.Warn("register_invalid_id", "role", roleController, "id", payload.ID, "remote_ip", remote)
+		if payload.Token == "" {
+			if payload.ID == "" {
+				h.log.Warn("register_missing_id", "role", roleController, "id", "", "remote_ip", remote)
+				return registerPayload{}, websocket.StatusPolicyViolation, "controller id required"
+			}
+			if !controllerIDPattern.MatchString(payload.ID) {
+				h.log.Warn("register_invalid_id", "role", roleController, "id", payload.ID, "remote_ip", remote)
+				return registerPayload{}, websocket.StatusPolicyViolation, "invalid controller id"
+			}
+		} else if payload.ID != "" && !controllerIDPattern.MatchString(payload.ID) {
+			h.log.Warn("register_invalid_id_optional", "role", roleController, "id", payload.ID, "remote_ip", remote)
 			return registerPayload{}, websocket.StatusPolicyViolation, "invalid controller id"
 		}
 	}
@@ -225,8 +267,40 @@ func (h *Hub) handleGame(ctx context.Context, conn *websocket.Conn, remote strin
 	return status, reason
 }
 
-func (h *Hub) handleController(ctx context.Context, conn *websocket.Conn, remote, controllerID string) (websocket.StatusCode, string) {
-	session := newControllerSession(conn, controllerID, remote, h.log)
+func (h *Hub) handleController(ctx context.Context, conn *websocket.Conn, remote string, reg registerPayload) (websocket.StatusCode, string) {
+	controllerID := reg.ID
+	var profile userProfile
+
+	if reg.Token != "" {
+		tokenInfo, err := h.resolveControllerToken(reg.Token)
+		if err != nil {
+			reason := "invalid controller token"
+			switch {
+			case errors.Is(err, errExpiredToken):
+				reason = "controller token expired"
+			}
+			h.log.Warn("register_token_invalid", "role", roleController, "id", controllerID, "remote_ip", remote, "err", err.Error())
+			return websocket.StatusPolicyViolation, reason
+		}
+		controllerID = tokenInfo.slotID
+		profile = tokenInfo.user
+		if reg.ID != "" && reg.ID != controllerID {
+			h.log.Warn("register_token_slot_mismatch", "role", roleController, "id", reg.ID, "remote_ip", remote, "expected", controllerID)
+			return websocket.StatusPolicyViolation, "token slot mismatch"
+		}
+	}
+
+	if controllerID == "" {
+		h.log.Warn("register_missing_id", "role", roleController, "id", "", "remote_ip", remote)
+		return websocket.StatusPolicyViolation, "controller id required"
+	}
+
+	if !controllerIDPattern.MatchString(controllerID) {
+		h.log.Warn("register_invalid_id", "role", roleController, "id", controllerID, "remote_ip", remote)
+		return websocket.StatusPolicyViolation, "invalid controller id"
+	}
+
+	session := newControllerSession(conn, controllerID, remote, profile, h.log)
 
 	replaced, err := h.addController(session)
 	if err != nil {
@@ -285,6 +359,161 @@ func (h *Hub) processControllerMessage(session *controllerSession, payload []byt
 	return nil
 }
 
+// IssueControllerToken generates a signed token that authorises the given slot
+// to register as the supplied Persona user within the provided TTL.
+func (h *Hub) IssueControllerToken(slotID, userID, name, personality string, ttl time.Duration) (string, time.Time, error) {
+	slotID = strings.ToLower(strings.TrimSpace(slotID))
+	userID = strings.TrimSpace(userID)
+	name = strings.TrimSpace(name)
+	personality = strings.TrimSpace(personality)
+
+	if !controllerIDPattern.MatchString(slotID) {
+		return "", time.Time{}, fmt.Errorf("invalid slot id %q", slotID)
+	}
+	if userID == "" {
+		return "", time.Time{}, errors.New("user id required")
+	}
+	if ttl <= 0 {
+		ttl = time.Minute
+	}
+
+	tokenValue, err := generateToken()
+	if err != nil {
+		return "", time.Time{}, fmt.Errorf("generate token: %w", err)
+	}
+	expiresAt := time.Now().Add(ttl)
+
+	profile := userProfile{
+		ID:          userID,
+		Name:        name,
+		Personality: personality,
+	}
+
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	h.cleanupExpiredTokensLocked(time.Now())
+
+	if previous := h.slotTokens[slotID]; previous != "" {
+		delete(h.tokens, previous)
+	}
+
+	h.tokens[tokenValue] = controllerToken{
+		slotID:    slotID,
+		user:      profile,
+		expiresAt: expiresAt,
+	}
+	h.slotTokens[slotID] = tokenValue
+
+	return tokenValue, expiresAt, nil
+}
+
+func (h *Hub) resolveControllerToken(token string) (controllerToken, error) {
+	token = strings.TrimSpace(token)
+	if token == "" {
+		return controllerToken{}, errInvalidToken
+	}
+
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	now := time.Now()
+	h.cleanupExpiredTokensLocked(now)
+
+	info, ok := h.tokens[token]
+	if !ok {
+		return controllerToken{}, errInvalidToken
+	}
+	if info.expiresAt.Before(now) {
+		delete(h.tokens, token)
+		if current, ok := h.slotTokens[info.slotID]; ok && current == token {
+			delete(h.slotTokens, info.slotID)
+		}
+		return controllerToken{}, errExpiredToken
+	}
+
+	return info, nil
+}
+
+func (h *Hub) cleanupExpiredTokensLocked(now time.Time) {
+	for tokenValue, info := range h.tokens {
+		if info.expiresAt.After(now) {
+			continue
+		}
+		delete(h.tokens, tokenValue)
+		if current, ok := h.slotTokens[info.slotID]; ok && current == tokenValue {
+			delete(h.slotTokens, info.slotID)
+		}
+	}
+}
+
+// ControllerAssignments returns the known mapping between controller slots and users.
+func (h *Hub) ControllerAssignments() []ControllerAssignment {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	now := time.Now()
+	h.cleanupExpiredTokensLocked(now)
+
+	bySlot := make(map[string]ControllerAssignment, len(h.controllers)+len(h.tokens))
+
+	for _, token := range h.tokens {
+		if token.expiresAt.Before(now) {
+			continue
+		}
+		assign := bySlot[token.slotID]
+		assign.SlotID = token.slotID
+		assign.UserID = token.user.ID
+		assign.Name = token.user.Name
+		assign.Personality = token.user.Personality
+		assign.TokenExpiresAt = token.expiresAt
+		bySlot[token.slotID] = assign
+	}
+
+	for slotID, session := range h.controllers {
+		if session == nil {
+			continue
+		}
+		assign := bySlot[slotID]
+		assign.SlotID = slotID
+		if session.user.ID != "" {
+			assign.UserID = session.user.ID
+		}
+		if session.user.Name != "" {
+			assign.Name = session.user.Name
+		}
+		if session.user.Personality != "" {
+			assign.Personality = session.user.Personality
+		}
+		assign.Connected = true
+		assign.LastSeen = session.lastSeen
+		assign.TokenExpiresAt = time.Time{}
+		bySlot[slotID] = assign
+	}
+
+	slots := make([]string, 0, len(bySlot))
+	for slotID := range bySlot {
+		slots = append(slots, slotID)
+	}
+	sort.Strings(slots)
+
+	assignments := make([]ControllerAssignment, 0, len(slots))
+	for _, slotID := range slots {
+		record := bySlot[slotID]
+		assignments = append(assignments, record)
+	}
+
+	return assignments
+}
+
+func generateToken() (string, error) {
+	buf := make([]byte, 32)
+	if _, err := rand.Read(buf); err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(buf), nil
+}
+
 func (h *Hub) forwardToGame(payload []byte, controller *controllerSession) {
 	h.mu.Lock()
 	game := h.game
@@ -329,15 +558,21 @@ type controllerSession struct {
 	lastSeen  time.Time
 	logger    *slog.Logger
 	lastSeenM sync.Mutex
+	user      userProfile
 }
 
-func newControllerSession(conn *websocket.Conn, id, remote string, logger *slog.Logger) *controllerSession {
+func newControllerSession(conn *websocket.Conn, id, remote string, user userProfile, logger *slog.Logger) *controllerSession {
+	logArgs := []any{"role", roleController, "id", id, "remote_ip", remote}
+	if user.ID != "" {
+		logArgs = append(logArgs, "user_id", user.ID)
+	}
 	return &controllerSession{
 		id:       id,
 		conn:     conn,
 		remoteIP: remote,
 		lastSeen: time.Now(),
-		logger:   logger.With("role", roleController, "id", id, "remote_ip", remote),
+		user:     user,
+		logger:   logger.With(logArgs...),
 	}
 }
 
