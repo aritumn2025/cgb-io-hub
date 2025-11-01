@@ -17,6 +17,8 @@ import (
 	"github.com/aritumn2025/cgb-io-hub/internal/persona"
 )
 
+const secretControllerPath = "/9e07842f171c5f485383ba7f47f7fff9234345b5"
+
 func (a *App) buildRouter(assets http.FileSystem) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", healthHandler)
@@ -26,29 +28,41 @@ func (a *App) buildRouter(assets http.FileSystem) http.Handler {
 	mux.HandleFunc("/api/game/lobby", a.gameLobbyHandler)
 	mux.HandleFunc("/api/game/start", a.gameStartHandler)
 	mux.HandleFunc("/api/game/result", a.gameResultHandler)
+	mux.Handle(secretControllerPath, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		serveAssetFile(w, r, assets, "index.html")
+	}))
 	mux.Handle("/staff", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		file, err := assets.Open("staff/index.html")
-		if err != nil {
-			http.NotFound(w, r)
-			return
-		}
-		defer file.Close()
-
-		info, err := file.Stat()
-		if err != nil {
-			http.NotFound(w, r)
-			return
-		}
-
-		if _, err := file.Seek(0, io.SeekStart); err != nil {
-			http.NotFound(w, r)
-			return
-		}
-
-		http.ServeContent(w, r, "index.html", info.ModTime(), file)
+		serveAssetFile(w, r, assets, "staff/index.html")
 	}))
 	mux.Handle("/", http.FileServer(assets))
 	return mux
+}
+
+func serveAssetFile(w http.ResponseWriter, r *http.Request, assets http.FileSystem, name string) {
+	file, err := assets.Open(name)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	defer file.Close()
+
+	info, err := file.Stat()
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	if _, err := file.Seek(0, io.SeekStart); err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	displayName := name
+	if idx := strings.LastIndex(name, "/"); idx >= 0 && idx+1 < len(name) {
+		displayName = name[idx+1:]
+	}
+
+	http.ServeContent(w, r, displayName, info.ModTime(), file)
 }
 
 func (a *App) controllerSessionHandler(w http.ResponseWriter, r *http.Request) {

@@ -153,6 +153,69 @@
           Persona Go
           のマイページに表示されるユーザーIDを入力すると自動でプレイヤー枠に割り当てられます。
         </p>
+        <section
+          class="player-picker__slot-helper is-hidden"
+          data-slot-helper
+          aria-labelledby="slot-helper-title"
+        >
+          <div class="player-picker__slot-header">
+            <h2 class="player-picker__slot-title" id="slot-helper-title">
+              接続先を選択
+            </h2>
+            <button
+              type="button"
+              class="player-picker__slot-refresh"
+              data-slot-refresh
+            >
+              再読み込み
+            </button>
+          </div>
+          <p class="player-picker__slot-note" data-slot-note>
+            ロビーの情報を読み込んでいます…
+          </p>
+          <div class="player-picker__slot-grid" data-slot-grid>
+            <button
+              type="button"
+              class="player-picker__slot-button"
+              data-slot-button="p1"
+              disabled
+            >
+              <span class="player-picker__slot-label">P1</span>
+              <span class="player-picker__slot-name" data-slot-name="p1">空席</span>
+              <span class="player-picker__slot-id" data-slot-id="p1">-</span>
+            </button>
+            <button
+              type="button"
+              class="player-picker__slot-button"
+              data-slot-button="p2"
+              disabled
+            >
+              <span class="player-picker__slot-label">P2</span>
+              <span class="player-picker__slot-name" data-slot-name="p2">空席</span>
+              <span class="player-picker__slot-id" data-slot-id="p2">-</span>
+            </button>
+            <button
+              type="button"
+              class="player-picker__slot-button"
+              data-slot-button="p3"
+              disabled
+            >
+              <span class="player-picker__slot-label">P3</span>
+              <span class="player-picker__slot-name" data-slot-name="p3">空席</span>
+              <span class="player-picker__slot-id" data-slot-id="p3">-</span>
+            </button>
+            <button
+              type="button"
+              class="player-picker__slot-button"
+              data-slot-button="p4"
+              disabled
+            >
+              <span class="player-picker__slot-label">P4</span>
+              <span class="player-picker__slot-name" data-slot-name="p4">空席</span>
+              <span class="player-picker__slot-id" data-slot-id="p4">-</span>
+            </button>
+          </div>
+        </section>
         <form class="player-picker__form" data-session-form autocomplete="off">
           <label class="player-picker__label" for="session-user-id">
             ユーザーID
