@@ -17,7 +17,10 @@ import (
 	"github.com/aritumn2025/cgb-io-hub/internal/persona"
 )
 
-const secretControllerPath = "/9e07842f171c5f485383ba7f47f7fff9234345b5"
+const (
+	secretControllerPath  = "/9e07842f171c5f485383ba7f47f7fff9234345b5"
+	secretControllerToken = "111525"
+)
 
 func (a *App) buildRouter(assets http.FileSystem) http.Handler {
 	mux := http.NewServeMux()
@@ -28,9 +31,14 @@ func (a *App) buildRouter(assets http.FileSystem) http.Handler {
 	mux.HandleFunc("/api/game/lobby", a.gameLobbyHandler)
 	mux.HandleFunc("/api/game/start", a.gameStartHandler)
 	mux.HandleFunc("/api/game/result", a.gameResultHandler)
-	mux.Handle(secretControllerPath, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		serveAssetFile(w, r, assets, "index.html")
-	}))
+	mux.Handle(secretControllerPath, http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Query().Get("help") != secretControllerToken {
+				http.NotFound(w, r)
+				return
+			}
+			serveAssetFile(w, r, assets, secretControllerPath+"/index.html")
+		}))
 	mux.Handle("/staff", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		serveAssetFile(w, r, assets, "staff/index.html")
 	}))
