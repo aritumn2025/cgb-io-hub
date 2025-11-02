@@ -42,6 +42,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const sessionInput = document.querySelector("[data-session-input]");
   const sessionError = document.querySelector("[data-session-error]");
   const resetButton = document.querySelector("[data-session-reset]");
+  const centerCursorButton = document.querySelector("[data-center-cursor]");
   const themeToggle = document.querySelector("[data-theme-toggle]");
   const controlToggle = document.querySelector("[data-control-toggle]");
   const slotHelperContainer = document.querySelector("[data-slot-helper]");
@@ -78,6 +79,13 @@ document.addEventListener("DOMContentLoaded", () => {
     : fallbackControllerId || null;
   let refreshTimer = null;
 
+  const updateCenterCursorButtonState = () => {
+    if (!centerCursorButton) {
+      return;
+    }
+    centerCursorButton.disabled = !controllerId;
+  };
+
   const connection = createConnection({
     getSession: () => activeSession,
     getControllerId: () => controllerId,
@@ -106,6 +114,21 @@ document.addEventListener("DOMContentLoaded", () => {
     sessionInput,
     sessionError,
   });
+
+  if (centerCursorButton) {
+    centerCursorButton.addEventListener("click", () => {
+      if (!controllerId) {
+        return;
+      }
+      const payload = {
+        type: "center_cursor",
+        id: controllerId,
+      };
+      if (!connection.send(JSON.stringify(payload))) {
+        status.set("未接続");
+      }
+    });
+  }
 
   const updateInfoPanel = () => {
     const displaySource =
@@ -153,6 +176,7 @@ document.addEventListener("DOMContentLoaded", () => {
         clearStoredSession();
       }
     }
+    updateCenterCursorButtonState();
     updateInfoPanel();
     setScreenVisibility({
       controllerScreen,
@@ -176,6 +200,7 @@ document.addEventListener("DOMContentLoaded", () => {
     controllerId = fallbackControllerId || null;
     clearStoredSession();
     updateInfoPanel();
+    updateCenterCursorButtonState();
     if (showForm) {
       setScreenVisibility({
         controllerScreen,
@@ -215,6 +240,7 @@ document.addEventListener("DOMContentLoaded", () => {
     sessionForm: sessionSection,
     showSessionForm: !controllerId,
   });
+  updateCenterCursorButtonState();
 
   if (activeSession) {
     applySession(activeSession, { persist: false, announce: false });
