@@ -1,10 +1,10 @@
 name: Deploy to VPS
 
-on:
-  push:
-    branches:
-      # ブランチを変える時は次を変更
-      - main
+# on:
+# push:
+# branches:
+# ブランチを変える時は次を変更
+# - main
 
 jobs:
   deploy:

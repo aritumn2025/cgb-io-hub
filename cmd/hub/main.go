@@ -98,7 +98,7 @@ func staticAssets() (http.FileSystem, error) {
 }
 
 func loadEnvironment() {
-	candidates := []string{".env", ".env.sample"}
+	candidates := []string{".env", ".env.example"}
 	for _, path := range candidates {
 		file, err := os.Open(path)
 		if err != nil {
@@ -112,10 +112,7 @@ func loadEnvironment() {
 		loaded := loadEnvFromReader(file)
 		file.Close()
 
-		if loaded && path == ".env" {
-			return
-		}
-		if loaded && path == ".env.sample" {
+		if loaded {
 			return
 		}
 	}
